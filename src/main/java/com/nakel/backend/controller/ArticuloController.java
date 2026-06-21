@@ -1,7 +1,7 @@
 package com.nakel.backend.controller;
 
 import com.nakel.backend.model.Articulo;
-import com.nakel.backend.repository.ArticuloRepository;
+import com.nakel.backend.service.ArticuloService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,17 +13,15 @@ import java.util.List;
 public class ArticuloController {
 
     @Autowired
-    private ArticuloRepository articuloRepository;
+    private ArticuloService articuloService;
 
-    // Método para obtener el stock
     @GetMapping
     public List<Articulo> obtenerTodos() {
-        return articuloRepository.findAll();
+        return articuloService.obtenerTodos();
     }
 
-    // Método para crear un artículo (Lo va a usar tu Calculadora Dinámica al final)
     @PostMapping
     public Articulo guardarArticulo(@RequestBody Articulo articulo) {
-        return articuloRepository.save(articulo);
+        return articuloService.guardarArticulo(articulo);
     }
 }

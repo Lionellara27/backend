@@ -1,7 +1,7 @@
 package com.nakel.backend.controller;
 
 import com.nakel.backend.model.Cliente;
-import com.nakel.backend.repository.ClienteRepository;
+import com.nakel.backend.service.ClienteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,17 +13,17 @@ import java.util.List;
 public class ClienteController {
 
     @Autowired
-    private ClienteRepository clienteRepository;
+    private ClienteService clienteService;
 
-    // Método para OBTENER todos los clientes (Lo va a usar el buscador del mostrador)
+    // Método para OBTENER todos los clientes
     @GetMapping
     public List<Cliente> obtenerTodos() {
-        return clienteRepository.findAll();
+        return clienteService.obtenerTodos();
     }
 
     // Método para CREAR un cliente nuevo
     @PostMapping
     public Cliente guardarCliente(@RequestBody Cliente cliente) {
-        return clienteRepository.save(cliente);
+        return clienteService.guardarCliente(cliente);
     }
 }
