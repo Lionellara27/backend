@@ -2,28 +2,27 @@ package com.nakel.backend.controller;
 
 import com.nakel.backend.model.Cliente;
 import com.nakel.backend.service.ClienteService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/clientes")
-@CrossOrigin(origins = "*") // Permite que cualquier frontend se conecte sin problemas
+@CrossOrigin(origins = "*")
 public class ClienteController {
 
-    @Autowired
-    private ClienteService clienteService;
+    private final ClienteService service;
 
-    // Método para OBTENER todos los clientes
-    @GetMapping
-    public List<Cliente> obtenerTodos() {
-        return clienteService.obtenerTodos();
+    public ClienteController(ClienteService service) {
+        this.service = service;
     }
 
-    // Método para CREAR un cliente nuevo
+    @GetMapping
+    public List<Cliente> obtenerTodos() {
+        return service.obtenerTodos();
+    }
+
     @PostMapping
     public Cliente guardarCliente(@RequestBody Cliente cliente) {
-        return clienteService.guardarCliente(cliente);
+        return service.guardarCliente(cliente);
     }
 }
