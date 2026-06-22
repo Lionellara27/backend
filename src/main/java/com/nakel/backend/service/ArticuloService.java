@@ -21,4 +21,10 @@ public class ArticuloService {
         // En el futuro, si querés validar que el código de barras no se repita, lo hacés acá adentro.
         return articuloRepository.save(articulo);
     }
+
+    public Articulo buscarPorCodigo(String codigo) {
+        // Asumiendo que tenés un repositorio llamado articuloRepository
+        return articuloRepository.findByCodigo(codigo)
+                .orElse(null); // O maneja la excepción como prefieras
+    }
 }

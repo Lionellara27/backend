@@ -20,6 +20,13 @@ public class ArticuloController {
         return articuloService.obtenerTodos();
     }
 
+    // 🔍 ESTO ES LO QUE LE FALTA AL BACKEND
+    @GetMapping("/codigo/{codigo}")
+    public Articulo buscarPorCodigo(@PathVariable String codigo) {
+        // Necesitas que tu service tenga este método, o podés usar el repository directo:
+        return articuloService.buscarPorCodigo(codigo);
+    }
+
     @PostMapping
     public Articulo guardarArticulo(@RequestBody Articulo articulo) {
         return articuloService.guardarArticulo(articulo);
