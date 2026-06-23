@@ -1,10 +1,12 @@
 package com.nakel.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.math.BigDecimal;
 
-@Data
+@Getter // Reemplazamos @Data
+@Setter // Reemplazamos @Data
 @Entity
 @Table(name = "clientes")
 public class Cliente {
@@ -20,15 +22,13 @@ public class Cliente {
 
     private String email;
 
-    // Campos obligatorios previstos para ARCA (Fase 2)
-    @Column(nullable = false)
+    // Le quitamos el nullable = false por si entra alguien a comprar rápido y no da su CUIT/DNI
+    @Column(unique = true)
     private String cuit;
 
     @Column(nullable = false)
-    private String condicionIva; // Ej: "Consumidor Final", "Monotributista"
+    private String condicionIva;
 
-    //Acá está la logica de la "Cuenta Corriente" o Fiado
-    // Si es 0.00, está al día. Si es mayor, nos debe plata.
     @Column(nullable = false)
     private BigDecimal saldoCuentaCorriente = BigDecimal.ZERO;
 }
