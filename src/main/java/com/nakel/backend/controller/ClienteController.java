@@ -43,4 +43,12 @@ public class ClienteController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    // 🔍 NUEVO: Permite preguntar si un DNI ya existe antes de crearlo
+    @GetMapping("/cuit/{cuit}")
+    public ResponseEntity<Cliente> buscarPorCuit(@PathVariable String cuit) {
+        return service.buscarPorCuit(cuit)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build()); // Devuelve 404 si no existe
+    }
 }

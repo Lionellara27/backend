@@ -44,4 +44,9 @@ public class ClienteService {
         }
         return repository.save(cliente);
     }
+
+    @Transactional(readOnly = true)
+    public Optional<Cliente> buscarPorCuit(String cuit) {
+        return repository.findByCuit(cuit);
+    }
 }
