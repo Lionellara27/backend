@@ -1,10 +1,13 @@
 package com.nakel.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.math.BigDecimal;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "detalles_venta")
 public class DetalleVenta {
@@ -22,13 +25,14 @@ public class DetalleVenta {
     @Column(nullable = false)
     private BigDecimal subtotal;
 
-    // Relación: Muchos detalles pertenecen a una sola Venta
-    @ManyToOne
+    // 🔥 BLINDAJE 1: Lazy + JsonIgnore (Para que no explote el Frontend)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venta_id", nullable = false)
+    @JsonIgnore
     private Venta venta;
 
-    // Relación: Muchos detalles apuntan a un único Artículo del catálogo
-    @ManyToOne
+    // 🔥 BLINDAJE 2: Lazy (Para no sobrecargar la memoria trayendo el catálogo entero)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "articulo_id", nullable = false)
     private Articulo articulo;
 }

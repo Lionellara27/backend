@@ -2,6 +2,8 @@ package com.nakel.backend.controller;
 
 import com.nakel.backend.model.Cliente;
 import com.nakel.backend.service.ClienteService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,27 +21,23 @@ public class ClienteController {
     }
 
     @GetMapping
-    public List<Cliente> obtenerTodos() {
-        return service.obtenerTodos();
+    public Page<Cliente> obtenerTodos(Pageable pageable) {
+        return service.obtenerTodos(pageable);
     }
 
     // 🔍 NUEVO: Endpoint para el buscador predictivo del Frontend
-    // Se usa así: /api/clientes/buscar?nombre=Lio
     @GetMapping("/buscar")
-    public List<Cliente> buscarPorNombre(@RequestParam String nombre) {
-        return service.buscarPorNombre(nombre);
+    public Page<Cliente> buscarPorNombre(@RequestParam String nombre, Pageable pageable) {
+        return service.buscarPorNombre(nombre, pageable);
     }
 
     // 🛡️ MEJORADO: Atrapamos la explosión del CUIT duplicado
     @PostMapping
     public ResponseEntity<?> guardarCliente(@RequestBody Cliente cliente) {
         try {
-            // Si todo sale bien, devolvemos el cliente con status 200 OK
             Cliente guardado = service.guardarCliente(cliente);
             return ResponseEntity.ok(guardado);
         } catch (RuntimeException e) {
-            // Si el service frena la operación por CUIT duplicado,
-            // le avisamos al Frontend con un 400 Bad Request y el mensaje exacto.
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -49,6 +47,28 @@ public class ClienteController {
     public ResponseEntity<Cliente> buscarPorCuit(@PathVariable String cuit) {
         return service.buscarPorCuit(cuit)
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build()); // Devuelve 404 si no existe
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ✏️ NUEVO: Endpoint para Actualizar (PUT)
+    @PutMapping("/{id}")
+    public ResponseEntity<?> actualizarCliente(@PathVariable Long id, @RequestBody Cliente clienteActualizado) {
+        try {
+            Cliente actualizado = service.actualizarCliente(id, clienteActualizado);
+            return ResponseEntity.ok(actualizado);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // 🗑️ NUEVO: Endpoint para Borrar (DELETE)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> eliminarCliente(@PathVariable Long id) {
+        try {
+            service.eliminarCliente(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

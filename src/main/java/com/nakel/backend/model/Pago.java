@@ -1,10 +1,13 @@
 package com.nakel.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.math.BigDecimal;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "pagos")
 public class Pago {
@@ -13,9 +16,10 @@ public class Pago {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ¿A qué venta pertenece esta plata?
-    @ManyToOne
+    // 🔥 BLINDAJE 1: Lazy + JsonIgnore (¡Clave para no romper el Frontend!)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venta_id", nullable = false)
+    @JsonIgnore
     private Venta venta;
 
     // Ej: "Efectivo", "Tarjeta de Débito", "Mercado Pago"

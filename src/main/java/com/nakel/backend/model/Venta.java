@@ -1,13 +1,15 @@
 package com.nakel.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.ToString;
+import lombok.Getter;
+import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "ventas")
 public class Venta {
@@ -22,28 +24,27 @@ public class Venta {
     @Column(nullable = false)
     private BigDecimal total;
 
-    // El campo que separa el mostrador de la AFIP (¡Lo dejé, es excelente!)
     @Column(nullable = false)
     private Boolean esFiscal;
 
-    // 🔥 ¡Acá se guarda si la clienta tildó "Para Regalo"!
     @Column(nullable = false)
     private Boolean esTicketCambio = false;
 
-    // Relación: Muchas ventas pueden pertenecer a un solo Cliente
-    @ManyToOne
+    // 🔥 BLINDAJE 1: Lazy para que no reviente la base de datos
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cliente_id")
     private Cliente cliente;
 
-    // 👇 LA MAGIA PARA EL PAGO MIXTO Y EL CARRITO 👇
-
-    // Una venta tiene muchos renglones (las carteras que compró)
-    @ToString.Exclude
+    // 🔥 BLINDAJE 2: new ArrayList<>() para evitar NullPointerExceptions
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<DetalleVenta> detalles;
+    private List<DetalleVenta> detalles = new ArrayList<>();
 
-    // Una venta tiene muchos pagos (Ej: 20k Efectivo + 40k Tarjeta)
-    @ToString.Exclude
+    // 🔥 BLINDAJE 3: Igual acá
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Pago> pagos;
+    private List<Pago> pagos = new ArrayList<>();
+
+    @PrePersist
+    public void prePersist() {
+        this.fechaHora = LocalDateTime.now();
+    }
 }

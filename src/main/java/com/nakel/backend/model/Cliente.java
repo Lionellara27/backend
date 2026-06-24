@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter // Reemplazamos @Data
 @Setter // Reemplazamos @Data
@@ -31,4 +33,11 @@ public class Cliente {
 
     @Column(nullable = false)
     private BigDecimal saldoCuentaCorriente = BigDecimal.ZERO;
+
+    // 🔥 LA CONEXIÓN: Un cliente tiene muchas ventas (El historial de sus compras)
+    // Usamos JsonIgnore para que cuando el Frontend pida la lista de clientes,
+    // no se traiga toda la base de datos de ventas pegada y cuelgue el sistema.
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Venta> ventas = new ArrayList<>();
 }

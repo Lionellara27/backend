@@ -21,4 +21,11 @@ public class VentaController {
     public ResponseEntity<Venta> cobrarVenta(@RequestBody Venta venta) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.procesarYGuardarVenta(venta));
     }
+
+    // Adentro de tu VentaController (Backend)
+    @GetMapping
+    public ResponseEntity<org.springframework.data.domain.Page<Venta>> obtenerHistorialVentas(org.springframework.data.domain.Pageable pageable) {
+        // Asumiendo que tenés el repository inyectado en el controller o llamás a un service
+        return ResponseEntity.ok(service.obtenerTodasLasVentas(pageable));
+    }
 }

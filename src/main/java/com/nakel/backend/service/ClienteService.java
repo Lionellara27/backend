@@ -2,10 +2,12 @@ package com.nakel.backend.service;
 
 import com.nakel.backend.model.Cliente;
 import com.nakel.backend.repository.ClienteRepository;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -13,31 +15,27 @@ public class ClienteService {
 
     private final ClienteRepository repository;
 
-    // 1. Inyección por constructor (Adiós @Autowired)
     public ClienteService(ClienteRepository repository) {
         this.repository = repository;
     }
 
-    // 2. 🔥 Apagamos el rastreo de memoria RAM
+    // 1. 🔥 Listado Paginado: Adiós a traer miles de registros de golpe
     @Transactional(readOnly = true)
-    public List<Cliente> obtenerTodos() {
-        return repository.findAll();
+    public Page<Cliente> obtenerTodos(Pageable pageable) {
+        return repository.findAll(pageable);
     }
 
-    // 3. Exponemos el buscador predictivo para cuando lo necesite el Frontend
+    // 2. 🔥 Búsqueda Predictiva Paginada
     @Transactional(readOnly = true)
-    public List<Cliente> buscarPorNombre(String nombre) {
-        return repository.findByNombreContainingIgnoreCase(nombre);
+    public Page<Cliente> buscarPorNombre(String nombre, Pageable pageable) {
+        return repository.findByNombreContainingIgnoreCase(nombre, pageable);
     }
 
-    // 4. 🔥 Hacemos realidad tu comentario: Validación de CUIT duplicado
+    // 3. Validación de CUIT (Se mantiene igual, ¡está muy bien!)
     @Transactional
     public Cliente guardarCliente(Cliente cliente) {
-        // Solo validamos si el cajero efectivamente ingresó un CUIT
         if (cliente.getCuit() != null && !cliente.getCuit().isBlank()) {
             Optional<Cliente> existente = repository.findByCuit(cliente.getCuit());
-
-            // Si existe y NO es el mismo cliente que estamos editando, explotamos
             if (existente.isPresent() && !existente.get().getId().equals(cliente.getId())) {
                 throw new RuntimeException("Error: Ya existe un cliente registrado con el CUIT/DNI " + cliente.getCuit());
             }
@@ -48,5 +46,33 @@ public class ClienteService {
     @Transactional(readOnly = true)
     public Optional<Cliente> buscarPorCuit(String cuit) {
         return repository.findByCuit(cuit);
+    }
+
+    // 4. Actualización (Se mantiene igual, bien lograda)
+    @Transactional
+    public Cliente actualizarCliente(Long id, Cliente clienteActualizado) {
+        Cliente existente = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Error: No se encontró el cliente."));
+
+        existente.setNombre(clienteActualizado.getNombre());
+        existente.setCuit(clienteActualizado.getCuit());
+        existente.setCondicionIva(clienteActualizado.getCondicionIva());
+        existente.setTelefono(clienteActualizado.getTelefono());
+        existente.setEmail(clienteActualizado.getEmail());
+
+        return guardarCliente(existente);
+    }
+
+    // 5. Eliminación (Se mantiene igual, bien lograda)
+    @Transactional
+    public void eliminarCliente(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RuntimeException("Error: El cliente ya no existe.");
+        }
+        try {
+            repository.deleteById(id);
+        } catch (DataIntegrityViolationException e) {
+            throw new RuntimeException("No se puede eliminar: tiene ventas asociadas.");
+        }
     }
 }
