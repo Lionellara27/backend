@@ -16,6 +16,10 @@ public class Proveedor {
     @Column(nullable = false)
     private String razonSocial; // Ej: "Cueros San Martín S.A."
 
+    private String nombreContacto; // 👈 NUEVO: Para matchear tu tabla del front
+
+    private String rubro; // 👈 NUEVO: Ej: "Cueros", "Herrajes", etc.
+
     private String cuit;
 
     private String telefono;
