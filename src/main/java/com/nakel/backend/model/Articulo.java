@@ -42,4 +42,8 @@ public class Articulo {
     @ManyToOne
     @JoinColumn(name = "categoria_id")
     private Categoria categoria;
+
+    // 🔥 AGREGAMOS ESTO: Para que el Dashboard sepa cuándo pintar la alerta roja
+    @Column(nullable = false)
+    private Integer stockMinimo = 8;
 }

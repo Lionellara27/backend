@@ -16,4 +16,12 @@ public interface ArticuloRepository extends JpaRepository<Articulo, Long> {
     List<Articulo> findAllOptimizado();
 
     Optional<Articulo> findByCodigo(String codigo);
+
+    // 🔥 Cuenta el total de productos en el catálogo
+    @Query("SELECT COUNT(a) FROM Articulo a")
+    Integer contarProductosTotales();
+
+    // 🔥 Cuenta cuántos productos están por debajo del stock mínimo (ALERTA ROJA)
+    @Query("SELECT COUNT(a) FROM Articulo a WHERE a.stockActual <= a.stockMinimo")
+    Integer contarStockCritico();
 }

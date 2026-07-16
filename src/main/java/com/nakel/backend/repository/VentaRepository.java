@@ -6,4 +6,12 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface VentaRepository extends JpaRepository<Venta, Long> {
+
+    // 🔥 Suma total de plata en un rango de fechas
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v WHERE v.fechaHora >= :inicio AND v.fechaHora <= :fin")
+    java.math.BigDecimal sumarVentasEntreFechas(@org.springframework.data.repository.query.Param("inicio") java.time.LocalDateTime inicio, @org.springframework.data.repository.query.Param("fin") java.time.LocalDateTime fin);
+
+    // 🔥 Cuenta cuántos tickets se hicieron en un rango de fechas
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(v) FROM Venta v WHERE v.fechaHora >= :inicio AND v.fechaHora <= :fin")
+    Integer contarVentasEntreFechas(@org.springframework.data.repository.query.Param("inicio") java.time.LocalDateTime inicio, @org.springframework.data.repository.query.Param("fin") java.time.LocalDateTime fin);
 }

@@ -3,6 +3,7 @@ package com.nakel.backend.model;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Data
 @Entity
@@ -31,4 +32,22 @@ public class Insumo {
     private Integer largoCm; // Solo para SUPERFICIE
 
     private Integer cantidad; // Solo para UNIDAD (Ej: vinieron 100 remaches)
+
+    // En tu Insumo.java
+    public BigDecimal getCostoPorCm2() {
+        // 🔥 Blindaje: verificamos que no sean nulos Y que sean mayores a cero
+        if (anchoCm != null && largoCm != null && anchoCm > 0 && largoCm > 0) {
+            BigDecimal areaTotal = new BigDecimal(anchoCm * largoCm);
+            return costoTotal.divide(areaTotal, 4, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.ZERO;
+    }
+
+    public BigDecimal getCostoPorUnidad() {
+        if (cantidad != null && cantidad > 0) {
+            // Divide el costo del paquete por la cantidad de remaches que trae
+            return costoTotal.divide(new BigDecimal(cantidad), 4, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.ZERO;
+    }
 }

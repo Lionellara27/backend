@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController // Le dice a Spring "Soy una API REST, devuelvo JSON, no páginas web"
 @RequestMapping("/api/insumos") // La ruta base a la que le pega tu HttpClient
 @CrossOrigin(origins = "*") // Permite que cualquier front (JavaFX, web, celular) se conecte sin bloqueos de seguridad
@@ -69,5 +71,15 @@ public class InsumoController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
+    }
+
+    @GetMapping("/lista")
+    public ResponseEntity<List<Insumo>> obtenerLista() {
+
+        List<Insumo> lista = insumoService
+                .obtenerTodos(Pageable.unpaged())
+                .getContent();
+
+        return ResponseEntity.ok(lista);
     }
 }
