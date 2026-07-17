@@ -40,13 +40,17 @@ public class InsumoController {
     }
 
     // 🟢 POST: GUARDAR NUEVO
+// 🟢 POST: GUARDAR NUEVO
     @PostMapping
     public ResponseEntity<?> guardarInsumo(@RequestBody Insumo insumo) {
         try {
+            // 🔥 AQUÍ ESTÁ EL CAMBIO:
+            // Antes de guardar, inicializamos el stock en base a la categoría y lotes
+            insumo.inicializarStock();
+
             Insumo insumoGuardado = insumoService.guardarInsumo(insumo);
-            return ResponseEntity.status(HttpStatus.CREATED).body(insumoGuardado); // Devuelve 201
+            return ResponseEntity.status(HttpStatus.CREATED).body(insumoGuardado);
         } catch (Exception e) {
-            // Si el service tira una excepción (ej: Categoría no existe), mandamos un 400 (Bad Request)
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }

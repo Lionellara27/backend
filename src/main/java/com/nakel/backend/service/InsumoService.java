@@ -58,14 +58,16 @@ public class InsumoService {
         Insumo insumoExistente = insumoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Error: Insumo no encontrado con el ID " + id));
 
-        // 2. Le pisamos los datos con lo que vino del Front
+        // 2. Le pisamos los datos con los NUEVOS nombres del modelo
         insumoExistente.setNombre(insumoActualizado.getNombre());
         insumoExistente.setCostoTotal(insumoActualizado.getCostoTotal());
-        insumoExistente.setAnchoCm(insumoActualizado.getAnchoCm());
-        insumoExistente.setLargoCm(insumoActualizado.getLargoCm());
-        insumoExistente.setCantidad(insumoActualizado.getCantidad());
 
-        // 3. Verificamos la categoría por si la cambió
+        // Mapeo de los campos nuevos de LOTE
+        insumoExistente.setAnchoLoteCm(insumoActualizado.getAnchoLoteCm());
+        insumoExistente.setLargoLoteCm(insumoActualizado.getLargoLoteCm());
+        insumoExistente.setCantidadLote(insumoActualizado.getCantidadLote());
+
+        // 3. Verificamos la categoría
         if (insumoActualizado.getCategoria() != null && insumoActualizado.getCategoria().getId() != null) {
             CategoriaInsumo categoriaReal = categoriaRepository.findById(insumoActualizado.getCategoria().getId())
                     .orElseThrow(() -> new RuntimeException("Error: La nueva categoría no existe."));

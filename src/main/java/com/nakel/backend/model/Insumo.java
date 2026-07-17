@@ -25,29 +25,53 @@ public class Insumo {
     @Column(nullable = false)
     private BigDecimal costoTotal; // Cuánto costó la plancha o el lote de herrajes
 
-    // --- Campos dinámicos (Pueden ser null dependiendo de lo que diga su categoría) ---
+    // ==========================================
+    // 📦 PARA INSUMOS POR UNIDAD (Cierres, Avíos)
+    // ==========================================
+    private Integer cantidadLote;   // Ej: Vinieron 100 remaches
+    private Integer cantidadActual; // Ej: Me quedan 85 remaches
 
-    private Integer anchoCm; // Solo para SUPERFICIE
+    // ==========================================
+    // 📏 PARA INSUMOS POR SUPERFICIE (Telas, Cueros)
+    // ==========================================
+    private Integer anchoLoteCm;   // Ej: 100 cm (Medida original comprada)
+    private Integer largoLoteCm;   // Ej: 100 cm (Medida original comprada)
+    private Integer areaActualCm2; // Ej: Arranca en 10.000 cm², si uso 400cm² baja a 9.600 cm²
 
-    private Integer largoCm; // Solo para SUPERFICIE
-
-    private Integer cantidad; // Solo para UNIDAD (Ej: vinieron 100 remaches)
-
-    // En tu Insumo.java
+    // ==========================================
+    // 🧮 MOTORES DE CÁLCULO DE COSTOS (Usan el LOTE)
+    // ==========================================
     public BigDecimal getCostoPorCm2() {
         // 🔥 Blindaje: verificamos que no sean nulos Y que sean mayores a cero
-        if (anchoCm != null && largoCm != null && anchoCm > 0 && largoCm > 0) {
-            BigDecimal areaTotal = new BigDecimal(anchoCm * largoCm);
+        if (anchoLoteCm != null && largoLoteCm != null && anchoLoteCm > 0 && largoLoteCm > 0) {
+            BigDecimal areaTotal = new BigDecimal(anchoLoteCm * largoLoteCm);
+            // Divide el costo de toda la plancha por el área LOTE para saber el costo de 1cm²
             return costoTotal.divide(areaTotal, 4, RoundingMode.HALF_UP);
         }
         return BigDecimal.ZERO;
     }
 
     public BigDecimal getCostoPorUnidad() {
-        if (cantidad != null && cantidad > 0) {
-            // Divide el costo del paquete por la cantidad de remaches que trae
-            return costoTotal.divide(new BigDecimal(cantidad), 4, RoundingMode.HALF_UP);
+        if (cantidadLote != null && cantidadLote > 0) {
+            // Divide el costo del paquete por la cantidad LOTE que trae
+            return costoTotal.divide(new BigDecimal(cantidadLote), 4, RoundingMode.HALF_UP);
         }
         return BigDecimal.ZERO;
+    }
+
+    // 🔥 AGREGÁ ESTO EN TU CLASE INSUMO (Backend)
+    public void inicializarStock() {
+        if (this.categoria != null) {
+            String tipo = this.categoria.getTipoMedicion();
+
+            if ("UNIDAD".equals(tipo)) {
+                this.cantidadActual = this.cantidadLote;
+            }
+            else if ("SUPERFICIE".equals(tipo)) {
+                if (this.anchoLoteCm != null && this.largoLoteCm != null) {
+                    this.areaActualCm2 = this.anchoLoteCm * this.largoLoteCm;
+                }
+            }
+        }
     }
 }
