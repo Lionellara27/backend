@@ -17,4 +17,8 @@ public class Categoria {
     // 🔥 Acá vive la regla del SKU para todas las billeteras
     @Column(nullable = false)
     private String prefijoSku; // Ej: "1111", "2222"
+
+    // 📏 NUEVO: Para saber cómo calcularlo en la receta (UNIDAD, SUPERFICIE, etc.)
+    @Column(nullable = true)
+    private String tipoMedicion;
 }

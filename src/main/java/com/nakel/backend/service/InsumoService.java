@@ -2,8 +2,10 @@ package com.nakel.backend.service;
 
 import com.nakel.backend.model.CategoriaInsumo;
 import com.nakel.backend.model.Insumo;
+import com.nakel.backend.model.Material;
 import com.nakel.backend.repository.CategoriaInsumoRepository;
 import com.nakel.backend.repository.InsumoRepository;
+import com.nakel.backend.repository.MaterialRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -15,11 +17,16 @@ public class InsumoService {
     // Traemos las dos herramientas que necesitamos para guardar
     private final InsumoRepository insumoRepository;
     private final CategoriaInsumoRepository categoriaRepository;
+    private final MaterialRepository materialRepository;
 
     // Inyección de dependencias por constructor (Buena práctica)
-    public InsumoService(InsumoRepository insumoRepository, CategoriaInsumoRepository categoriaRepository) {
+    public InsumoService(InsumoRepository insumoRepository,
+                         CategoriaInsumoRepository categoriaRepository,
+                         MaterialRepository materialRepository) {
+
         this.insumoRepository = insumoRepository;
         this.categoriaRepository = categoriaRepository;
+        this.materialRepository = materialRepository;
     }
 
     // 🟢 OBTENER TODOS (BLINDADO CON PAGINACIÓN)
@@ -37,17 +44,39 @@ public class InsumoService {
     // 🟢 GUARDAR NUEVO
     @Transactional
     public Insumo guardarInsumo(Insumo insumo) {
-        // VALIDACIÓN CLAVE: Buscamos que la categoría exista de verdad antes de guardar
-        if (insumo.getCategoria() != null && insumo.getCategoria().getId() != null) {
-            CategoriaInsumo categoriaReal = categoriaRepository.findById(insumo.getCategoria().getId())
-                    .orElseThrow(() -> new RuntimeException("Error: La categoría seleccionada no existe en el sistema."));
 
-            // Le pegamos la categoría real de la BD al insumo
+        // ==========================================
+        // VALIDAR Y CARGAR LA CATEGORÍA
+        // ==========================================
+        if (insumo.getCategoria() != null && insumo.getCategoria().getId() != null) {
+
+            CategoriaInsumo categoriaReal = categoriaRepository
+                    .findById(insumo.getCategoria().getId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Error: La categoría seleccionada no existe en el sistema."));
+
             insumo.setCategoria(categoriaReal);
+
         } else {
             throw new RuntimeException("Error: El insumo debe tener una categoría válida asignada.");
         }
 
+        // ==========================================
+        // VALIDAR Y CARGAR EL MATERIAL (OPCIONAL)
+        // ==========================================
+        if (insumo.getMaterial() != null && insumo.getMaterial().getId() != null) {
+
+            Material materialReal = materialRepository
+                    .findById(insumo.getMaterial().getId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Error: El material seleccionado no existe en el sistema."));
+
+            insumo.setMaterial(materialReal);
+        }
+
+        // ==========================================
+        // GUARDAR
+        // ==========================================
         return insumoRepository.save(insumo);
     }
 

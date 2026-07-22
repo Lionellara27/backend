@@ -38,6 +38,14 @@ public class Insumo {
     private Integer largoLoteCm;   // Ej: 100 cm (Medida original comprada)
     private Integer areaActualCm2; // Ej: Arranca en 10.000 cm², si uso 400cm² baja a 9.600 cm²
 
+
+    //
+    // 🔗 Relación con el Material GLOBAL (Opcional, solo para los de tipo SUPERFICIE)
+    @ManyToOne
+    @JoinColumn(name = "material_id", nullable = true)
+    private Material material;
+     //
+
     // ==========================================
     // 🧮 MOTORES DE CÁLCULO DE COSTOS (Usan el LOTE)
     // ==========================================

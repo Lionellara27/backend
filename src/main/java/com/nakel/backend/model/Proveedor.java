@@ -14,19 +14,15 @@ public class Proveedor {
     private Long id;
 
     @Column(nullable = false)
-    private String razonSocial; // Ej: "Cueros San Martín S.A."
+    private String razonSocial;
 
-    private String nombreContacto; // 👈 NUEVO: Para matchear tu tabla del front
-
-    private String rubro; // 👈 NUEVO: Ej: "Cueros", "Herrajes", etc.
-
+    private String nombreContacto;
+    private String rubro;
     private String cuit;
-
     private String telefono;
-
     private String email;
 
-    // 💰 La deuda nuestra con ellos (Ej: Pagos a 30 días)
-    @Column(nullable = false)
-    private BigDecimal saldoPendiente = BigDecimal.ZERO;
+    // 🔥 SOLO QUEDA ESTE
+    @Column(nullable = true)
+    private BigDecimal saldo = BigDecimal.ZERO;
 }

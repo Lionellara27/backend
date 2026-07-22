@@ -46,7 +46,7 @@ public class ProveedorController {
                 proveedorExistente.setNombreContacto(proveedorActualizado.getNombreContacto());
                 proveedorExistente.setTelefono(proveedorActualizado.getTelefono());
                 proveedorExistente.setRubro(proveedorActualizado.getRubro());
-                proveedorExistente.setSaldoPendiente(proveedorActualizado.getSaldoPendiente());
+                proveedorExistente.setSaldo(proveedorActualizado.getSaldo());
                 proveedorExistente.setCuit(proveedorActualizado.getCuit());
                 proveedorExistente.setEmail(proveedorActualizado.getEmail());
 
