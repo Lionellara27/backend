@@ -24,4 +24,10 @@ public interface ArticuloRepository extends JpaRepository<Articulo, Long> {
     // 🔥 Cuenta cuántos productos están por debajo del stock mínimo (ALERTA ROJA)
     @Query("SELECT COUNT(a) FROM Articulo a WHERE a.stockActual <= a.stockMinimo")
     Integer contarStockCritico();
+
+    // 🔥 Busca el último artículo registrado de una categoría específica para ordenar el SKU
+    // 🔥 Busca el último artículo registrado de una categoría específica para ordenar el SKU
+    @Query("SELECT a FROM Articulo a WHERE a.categoria.id = :categoriaId ORDER BY a.id DESC")
+    List<Articulo> findUltimoPorCategoria(@org.springframework.data.repository.query.Param("categoriaId") Long categoriaId);
+
 }
