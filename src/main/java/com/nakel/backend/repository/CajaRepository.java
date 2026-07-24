@@ -14,4 +14,6 @@ public interface CajaRepository extends JpaRepository<CajaDiaria, Long> {
 
     // Trae todas las cajas ordenadas por fecha reciente (para el historial)
     List<CajaDiaria> findAllByOrderByFechaAperturaDesc();
+
+    Optional<CajaDiaria> findFirstByOrderByFechaAperturaDesc();
 }

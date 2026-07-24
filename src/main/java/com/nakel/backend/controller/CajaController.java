@@ -17,24 +17,24 @@ public class CajaController {
     @Autowired
     private CajaService cajaService;
 
-    // Obtener caja actual (la abre si no existe)
+    // 🔥 Agregamos ?username=... para saber quién abre la caja
     @GetMapping("/actual")
-    public ResponseEntity<CajaDiaria> obtenerCajaActual() {
-        return ResponseEntity.ok(cajaService.obtenerOCrearCajaActual());
+    public ResponseEntity<CajaDiaria> obtenerCajaActual(@RequestParam String username) {
+        return ResponseEntity.ok(cajaService.obtenerOCrearCajaActual(username));
     }
 
-    // Cerrar caja
+    // 🔥 Agregamos ?username=... para saber quién la cierra
     @PostMapping("/cerrar")
-    public ResponseEntity<?> cerrarCaja() {
+    public ResponseEntity<?> cerrarCaja(@RequestParam String username) {
         try {
-            CajaDiaria cajaCerrada = cajaService.cerrarCajaActual();
+            CajaDiaria cajaCerrada = cajaService.cerrarCajaActual(username);
             return ResponseEntity.ok(cajaCerrada);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
-    // Historial
+    // Historial (Este queda igual porque solo lee datos)
     @GetMapping("/historial")
     public ResponseEntity<List<CajaDiaria>> obtenerHistorial() {
         return ResponseEntity.ok(cajaService.obtenerHistorialCajas());
