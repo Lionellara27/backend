@@ -3,7 +3,7 @@ package com.nakel.backend.service;
 import com.nakel.backend.model.Venta;
 import com.nakel.backend.repository.ClienteRepository;
 import com.nakel.backend.repository.VentaRepository;
-import com.nakel.backend.repository.ArticuloRepository; // 🔥 1. IMPORTANTE: Agregamos el repo de artículos
+import com.nakel.backend.repository.ArticuloRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,17 +15,21 @@ public class VentaService {
 
     private final VentaRepository ventaRepository;
     private final ClienteRepository clienteRepository;
-    private final ArticuloRepository articuloRepository; // 🔥 2. Lo declaramos acá
+    private final ArticuloRepository articuloRepository;
+
+    // 🔥 1. AGREGAMOS EL CAJA SERVICE
+    private final CajaService cajaService;
 
     @Autowired
-    public VentaService(VentaRepository ventaRepository, ClienteRepository clienteRepository, ArticuloRepository articuloRepository) {
+    public VentaService(VentaRepository ventaRepository, ClienteRepository clienteRepository, ArticuloRepository articuloRepository, CajaService cajaService) {
         this.ventaRepository = ventaRepository;
         this.clienteRepository = clienteRepository;
-        this.articuloRepository = articuloRepository; // 🔥 3. Lo metemos en el constructor
+        this.articuloRepository = articuloRepository;
+        this.cajaService = cajaService; // Inyectamos la caja
     }
 
     @Transactional
-    public Venta procesarYGuardarVenta(Venta venta) {
+    public Venta procesarYGuardarVenta(Venta venta, String username) { // 🔥 ACÁ AHORA SÍ RECIBE EL USERNAME
 
         // 0. EL CONTROL POLICIAL DEL CLIENTE
         if (venta.getCliente() != null && venta.getCliente().getCuit() != null) {
@@ -57,23 +61,24 @@ public class VentaService {
         }
         venta.setEsFiscal(debeSerFiscal);
 
-        // 🔥 3. LA LÓGICA DE STOCK (Acá pasa la magia) 🔥
+        // 3. LA LÓGICA DE STOCK
         if (venta.getDetalles() != null) {
             for (var detalle : venta.getDetalles()) {
-                // Buscamos el artículo original en la base de datos
                 var articuloEnBd = articuloRepository.findById(detalle.getArticulo().getId())
                         .orElseThrow(() -> new RuntimeException("Artículo no encontrado con ID: " + detalle.getArticulo().getId()));
 
-                // Le restamos la cantidad final de la venta
                 articuloEnBd.setStockActual(articuloEnBd.getStockActual() - detalle.getCantidad());
-
-                // Lo guardamos actualizado
                 articuloRepository.save(articuloEnBd);
             }
         }
 
         // 4. Guardamos la Venta final en la Base de Datos
-        return ventaRepository.save(venta);
+        Venta ventaGuardada = ventaRepository.save(venta);
+
+        // 🔥 5. ¡LE MANDAMOS LA PLATA A LA CAJA DEL USUARIO!
+        cajaService.acumularVentaEnCajaActual(ventaGuardada, username);
+
+        return ventaGuardada;
     }
 
     public Page<Venta> obtenerTodasLasVentas(Pageable pageable) {

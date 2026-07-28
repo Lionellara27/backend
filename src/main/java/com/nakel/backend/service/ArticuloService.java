@@ -29,4 +29,27 @@ public class ArticuloService {
     public Articulo buscarPorCodigo(String codigo) {
         return articuloRepository.findByCodigo(codigo).orElse(null);
     }
+
+    // En tu ArticuloService.java del Backend:
+
+    public boolean eliminarArticulo(Long id) {
+        if (articuloRepository.existsById(id)) {
+            articuloRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
+    public Articulo actualizarArticulo(Long id, Articulo articuloNuevo) {
+        return articuloRepository.findById(id).map(art -> {
+            art.setCodigo(articuloNuevo.getCodigo());
+            art.setNombre(articuloNuevo.getNombre());
+            art.setPrecio(articuloNuevo.getPrecio());
+            art.setStockActual(articuloNuevo.getStockActual());
+            art.setOrigen(articuloNuevo.getOrigen());
+            art.setCategoria(articuloNuevo.getCategoria());
+            art.setMaterial(articuloNuevo.getMaterial());
+            return articuloRepository.save(art);
+        }).orElse(null);
+    }
 }

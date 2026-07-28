@@ -1,8 +1,10 @@
 package com.nakel.backend.service;
 
 import com.nakel.backend.model.CajaDiaria;
-import com.nakel.backend.model.TipoMovimientoCaja; // 🔥 Importante
+import com.nakel.backend.model.Pago;
+import com.nakel.backend.model.TipoMovimientoCaja;
 import com.nakel.backend.model.Usuario;
+import com.nakel.backend.model.Venta;
 import com.nakel.backend.repository.CajaRepository;
 import com.nakel.backend.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,8 +29,6 @@ public class CajaService {
     private MovimientoCajaService movimientoCajaService;
 
     // 🟢 1. Obtener la caja activa del día, reabrirla si se cerró temporalmente, o crear nueva si cambió el día
-    // 🟢 1. Obtener la caja activa del día, reabrirla si se cerró temporalmente, o crear nueva si cambió el día
-    // 🔥 Le agregamos 'synchronized' para evitar que un doble-clic cree dos cajas al mismo tiempo
     public synchronized CajaDiaria obtenerOCrearCajaActual(String username) {
         LocalDate hoy = LocalDate.now();
 
@@ -36,8 +36,7 @@ public class CajaService {
         Usuario usuario = usuarioRepository.findByNombreUsuario(username)
                 .orElseGet(() -> usuarioRepository.findByNombreUsuario("admin").orElse(null));
 
-        // 🔥 LA MAGIA: Traemos la lista y buscamos EXACTAMENTE la fecha de hoy.
-        // Esto evita que SQLite nos mienta con el ordenamiento de fechas.
+        // Traemos todas las cajas para buscar exactamente la fecha de hoy
         List<CajaDiaria> todasLasCajas = cajaRepository.findAllByOrderByFechaAperturaDesc();
 
         Optional<CajaDiaria> cajaDeHoyOpt = todasLasCajas.stream()
@@ -50,14 +49,14 @@ public class CajaService {
         if (cajaDeHoyOpt.isPresent()) {
             CajaDiaria cajaDeHoy = cajaDeHoyOpt.get();
 
-            // 1. Si la caja ya está abierta, la devolvemos para seguir vendiendo
+            // 1. Si la caja ya está abierta, la devolvemos
             if ("ABIERTA".equalsIgnoreCase(cajaDeHoy.getEstado())) {
                 return cajaDeHoy;
             }
 
             // 2. Si estaba cerrada (ej. cierre del mediodía), LA REABRIMOS
             cajaDeHoy.setEstado("ABIERTA");
-            cajaDeHoy.setFechaCierre(null); // Se quita el horario de cierre
+            cajaDeHoy.setFechaCierre(null);
             CajaDiaria cajaReabierta = cajaRepository.save(cajaDeHoy);
 
             movimientoCajaService.registrarMovimiento(
@@ -136,7 +135,6 @@ public class CajaService {
 
         CajaDiaria cajaCerrada = cajaRepository.save(caja);
 
-        // 🔥 Usamos el Enum correspondiente
         movimientoCajaService.registrarMovimiento(
                 cajaCerrada, usuario, TipoMovimientoCaja.CIERRE_CAJA, "Cierre de Caja", "Caja cerrada por el usuario", null, saldoFinalCalculado
         );
@@ -149,26 +147,37 @@ public class CajaService {
         return cajaRepository.findAllByOrderByFechaAperturaDesc();
     }
 
-    // 💵 4. Acumular Venta en la Caja Activa
-    public void acumularVentaEnCajaActual(BigDecimal totalVenta, String medioPago, String username) {
+    // 💵 4. Acumular Venta en la Caja Activa (🔥 SOPORTA MULTI-PAGOS Y TARJETAS)
+    public void acumularVentaEnCajaActual(Venta venta, String username) {
         try {
             CajaDiaria caja = obtenerOCrearCajaActual(username);
 
             Usuario usuario = usuarioRepository.findByNombreUsuario(username)
                     .orElseGet(() -> usuarioRepository.findByNombreUsuario("admin").orElse(null));
 
+            BigDecimal totalVenta = venta.getTotal();
+
             // Sumar cantidad de ventas y total vendido
             caja.setCantidadVentas(caja.getCantidadVentas() + 1);
             caja.setTotalVentas(caja.getTotalVentas().add(totalVenta));
 
-            // Repartir según el medio de pago
-            if (medioPago != null) {
-                if (medioPago.equalsIgnoreCase("Efectivo")) {
-                    caja.setTotalEfectivo(caja.getTotalEfectivo().add(totalVenta));
-                } else if (medioPago.equalsIgnoreCase("MercadoPago") || medioPago.equalsIgnoreCase("Mercado Pago")) {
-                    caja.setTotalMercadoPago(caja.getTotalMercadoPago().add(totalVenta));
-                } else if (medioPago.equalsIgnoreCase("Transferencia")) {
-                    caja.setTotalTransferencias(caja.getTotalTransferencias().add(totalVenta));
+            // 🔥 Recorremos todos los pagos individuales de la venta (Soporta Pago Mixto)
+            if (venta.getPagos() != null) {
+                for (Pago pago : venta.getPagos()) {
+                    BigDecimal montoPago = pago.getMonto();
+                    String medio = pago.getMetodoPago();
+
+                    if (medio.equalsIgnoreCase("Efectivo")) {
+                        caja.setTotalEfectivo(caja.getTotalEfectivo().add(montoPago));
+                    } else if (medio.equalsIgnoreCase("MercadoPago") || medio.equalsIgnoreCase("Mercado Pago")) {
+                        caja.setTotalMercadoPago(caja.getTotalMercadoPago().add(montoPago));
+                    } else if (medio.equalsIgnoreCase("Transferencia")) {
+                        caja.setTotalTransferencias(caja.getTotalTransferencias().add(montoPago));
+                    } else if (medio.equalsIgnoreCase("Tarjeta de Débito") || medio.equalsIgnoreCase("Tarjeta Debito")) {
+                        caja.setTotalTarjetaDebito(caja.getTotalTarjetaDebito().add(montoPago));
+                    } else if (medio.equalsIgnoreCase("Tarjeta de Crédito") || medio.equalsIgnoreCase("Tarjeta Credito")) {
+                        caja.setTotalTarjetaCredito(caja.getTotalTarjetaCredito().add(montoPago));
+                    }
                 }
             }
 
@@ -177,9 +186,13 @@ public class CajaService {
 
             cajaRepository.save(caja);
 
-            // 🔥 Usamos el Enum correspondiente para Venta / Ingreso
+            String descripcionPago = "Mixto / Varios";
+            if (venta.getPagos() != null && venta.getPagos().size() == 1) {
+                descripcionPago = venta.getPagos().get(0).getMetodoPago();
+            }
+
             movimientoCajaService.registrarMovimiento(
-                    caja, usuario, TipoMovimientoCaja.VENTA, "Venta realizada", "Cobro de ticket", medioPago, totalVenta
+                    caja, usuario, TipoMovimientoCaja.VENTA, "Venta realizada", "Cobro de ticket", descripcionPago, totalVenta
             );
 
         } catch (Exception e) {
@@ -187,7 +200,7 @@ public class CajaService {
         }
     }
 
-    // 💸 5. Registrar Retiro / Egreso de Dinero (Ej: Compra de cuero)
+    // 💸 5. Registrar Retiro / Egreso de Dinero
     public void registrarEgreso(BigDecimal monto, String concepto, String descripcion, String username) {
         try {
             CajaDiaria caja = obtenerOCrearCajaActual(username);
@@ -200,7 +213,6 @@ public class CajaService {
 
             cajaRepository.save(caja);
 
-            // 🔥 Usamos el Enum correspondiente para Egreso
             movimientoCajaService.registrarMovimiento(
                     caja, usuario, TipoMovimientoCaja.EGRESO, concepto, descripcion, "Efectivo", monto
             );

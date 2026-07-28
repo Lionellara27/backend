@@ -17,15 +17,16 @@ public class VentaController {
         this.service = service;
     }
 
+    // 🔥 Agregamos el @RequestParam String username
     @PostMapping
-    public ResponseEntity<Venta> cobrarVenta(@RequestBody Venta venta) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.procesarYGuardarVenta(venta));
+    public ResponseEntity<Venta> cobrarVenta(@RequestBody Venta venta, @RequestParam String username) {
+        // 🔥 Le pasamos la venta Y el username al servicio
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.procesarYGuardarVenta(venta, username));
     }
 
-    // Adentro de tu VentaController (Backend)
+    // Historial de Ventas (Este queda intacto)
     @GetMapping
     public ResponseEntity<org.springframework.data.domain.Page<Venta>> obtenerHistorialVentas(org.springframework.data.domain.Pageable pageable) {
-        // Asumiendo que tenés el repository inyectado en el controller o llamás a un service
         return ResponseEntity.ok(service.obtenerTodasLasVentas(pageable));
     }
 }

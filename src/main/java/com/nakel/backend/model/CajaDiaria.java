@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDate; // 🔥 Importante
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +20,7 @@ public class CajaDiaria {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔥 El campo que exigía SQLite y faltaba mapear en la entidad
+    // Fecha del día de la caja
     @Column(name = "fecha", nullable = false)
     private LocalDate fecha = LocalDate.now();
 
@@ -54,6 +54,13 @@ public class CajaDiaria {
 
     @Column(nullable = false)
     private BigDecimal totalTransferencias = BigDecimal.ZERO;
+
+    // 🔥 NUEVOS CAMPOS: Tarjetas agregadas para Pago Mixto y Arqueo
+    @Column(name = "total_tarjeta_debito", nullable = false)
+    private BigDecimal totalTarjetaDebito = BigDecimal.ZERO;
+
+    @Column(name = "total_tarjeta_credito", nullable = false)
+    private BigDecimal totalTarjetaCredito = BigDecimal.ZERO;
 
     // Total vendido
     @Column(nullable = false)
