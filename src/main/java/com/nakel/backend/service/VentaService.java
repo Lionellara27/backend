@@ -16,8 +16,6 @@ public class VentaService {
     private final VentaRepository ventaRepository;
     private final ClienteRepository clienteRepository;
     private final ArticuloRepository articuloRepository;
-
-    // 🔥 1. AGREGAMOS EL CAJA SERVICE
     private final CajaService cajaService;
 
     @Autowired
@@ -25,11 +23,16 @@ public class VentaService {
         this.ventaRepository = ventaRepository;
         this.clienteRepository = clienteRepository;
         this.articuloRepository = articuloRepository;
-        this.cajaService = cajaService; // Inyectamos la caja
+        this.cajaService = cajaService;
+    }
+
+    // 🔥 1. ACÁ ESTÁ EL MÉTODO QUE FALTABA (Para que el correo encuentre la venta)
+    public Venta buscarPorId(Long id) {
+        return ventaRepository.findById(id).orElse(null);
     }
 
     @Transactional
-    public Venta procesarYGuardarVenta(Venta venta, String username) { // 🔥 ACÁ AHORA SÍ RECIBE EL USERNAME
+    public Venta procesarYGuardarVenta(Venta venta, String username) {
 
         // 0. EL CONTROL POLICIAL DEL CLIENTE
         if (venta.getCliente() != null && venta.getCliente().getCuit() != null) {
@@ -49,7 +52,16 @@ public class VentaService {
             venta.getPagos().forEach(pago -> pago.setVenta(venta));
         }
 
-        // 2. LA LÓGICA DE NEGOCIO (AFIP vs BARRANÍ)
+        // 🔥 2. EL ESCUDO DE PRESUPUESTOS (Nuestra regla de oro)
+        if ("Presupuesto".equalsIgnoreCase(venta.getTipoComprobante())) {
+            System.out.println("🛡️ Guardando Presupuesto: No se descuenta stock ni ingresa a la caja.");
+            venta.setEsFiscal(false);
+            return ventaRepository.save(venta); // Lo guarda para el historial y CORTA el proceso acá.
+        }
+
+        // 🟢 DE ACÁ PARA ABAJO PASAN SOLO LAS VENTAS REALES 🟢
+
+        // 3. LA LÓGICA DE NEGOCIO (AFIP vs BARRANÍ)
         boolean debeSerFiscal = false;
         if (venta.getPagos() != null) {
             for (var pago : venta.getPagos()) {
@@ -61,7 +73,7 @@ public class VentaService {
         }
         venta.setEsFiscal(debeSerFiscal);
 
-        // 3. LA LÓGICA DE STOCK
+        // 4. LA LÓGICA DE STOCK
         if (venta.getDetalles() != null) {
             for (var detalle : venta.getDetalles()) {
                 var articuloEnBd = articuloRepository.findById(detalle.getArticulo().getId())
@@ -72,10 +84,10 @@ public class VentaService {
             }
         }
 
-        // 4. Guardamos la Venta final en la Base de Datos
+        // 5. Guardamos la Venta final en la Base de Datos
         Venta ventaGuardada = ventaRepository.save(venta);
 
-        // 🔥 5. ¡LE MANDAMOS LA PLATA A LA CAJA DEL USUARIO!
+        // 6. ¡LE MANDAMOS LA PLATA A LA CAJA DEL USUARIO!
         cajaService.acumularVentaEnCajaActual(ventaGuardada, username);
 
         return ventaGuardada;

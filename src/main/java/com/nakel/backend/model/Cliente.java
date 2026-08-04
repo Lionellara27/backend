@@ -7,8 +7,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
-@Getter // Reemplazamos @Data
-@Setter // Reemplazamos @Data
+@Getter
+@Setter
 @Entity
 @Table(name = "clientes")
 public class Cliente {
@@ -24,19 +24,19 @@ public class Cliente {
 
     private String email;
 
-    // Le quitamos el nullable = false por si entra alguien a comprar rápido y no da su CUIT/DNI
     @Column(unique = true)
     private String cuit;
 
     @Column(nullable = false)
     private String condicionIva;
 
+    // 🔥 ACÁ ESTÁ EL CAMBIO: Borramos saldoCuentaCorriente y metemos los dos nuevos
     @Column(nullable = false)
-    private BigDecimal saldoCuentaCorriente = BigDecimal.ZERO;
+    private BigDecimal saldoAFavor = BigDecimal.ZERO;
 
-    // 🔥 LA CONEXIÓN: Un cliente tiene muchas ventas (El historial de sus compras)
-    // Usamos JsonIgnore para que cuando el Frontend pida la lista de clientes,
-    // no se traiga toda la base de datos de ventas pegada y cuelgue el sistema.
+    @Column(nullable = false)
+    private BigDecimal saldoPendiente = BigDecimal.ZERO;
+
     @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Venta> ventas = new ArrayList<>();

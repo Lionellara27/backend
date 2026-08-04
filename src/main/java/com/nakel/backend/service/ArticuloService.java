@@ -30,8 +30,6 @@ public class ArticuloService {
         return articuloRepository.findByCodigo(codigo).orElse(null);
     }
 
-    // En tu ArticuloService.java del Backend:
-
     public boolean eliminarArticulo(Long id) {
         if (articuloRepository.existsById(id)) {
             articuloRepository.deleteById(id);
@@ -49,6 +47,25 @@ public class ArticuloService {
             art.setOrigen(articuloNuevo.getOrigen());
             art.setCategoria(articuloNuevo.getCategoria());
             art.setMaterial(articuloNuevo.getMaterial());
+            return articuloRepository.save(art);
+        }).orElse(null);
+    }
+
+    // 🔥 NUEVO: Suma stock al artículo cuando el cliente lo devuelve
+    @Transactional
+    public Articulo restaurarStock(Long id, int cantidad) {
+        return articuloRepository.findById(id).map(art -> {
+            art.setStockActual(art.getStockActual() + cantidad);
+            return articuloRepository.save(art);
+        }).orElse(null);
+    }
+
+    // 🔥 NUEVO: Resta stock al artículo cuando el cliente se lo lleva en un cambio
+    @Transactional
+    public Articulo descontarStock(Long id, int cantidad) {
+        return articuloRepository.findById(id).map(art -> {
+            // Restamos la cantidad al stock que ya tiene
+            art.setStockActual(art.getStockActual() - cantidad);
             return articuloRepository.save(art);
         }).orElse(null);
     }

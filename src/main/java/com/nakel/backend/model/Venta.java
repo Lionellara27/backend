@@ -30,6 +30,13 @@ public class Venta {
     @Column(nullable = false)
     private Boolean esTicketCambio = false;
 
+    // 🔥 BLINDAJE 4: Inicializamos la lista y sacamos el "java.util."
+    @OneToMany(mappedBy = "ventaOriginal", cascade = CascadeType.ALL)
+    private List<Cambio> historialCambios = new ArrayList<>();
+
+    @Column(name = "tipo_comprobante")
+    private String tipoComprobante;
+
     // 🔥 BLINDAJE 1: Lazy para que no reviente la base de datos
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cliente_id")

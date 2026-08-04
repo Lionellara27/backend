@@ -49,6 +49,7 @@ public class ClienteService {
     }
 
     // 4. Actualización (Se mantiene igual, bien lograda)
+    // 4. Actualización
     @Transactional
     public Cliente actualizarCliente(Long id, Cliente clienteActualizado) {
         Cliente existente = repository.findById(id)
@@ -59,6 +60,10 @@ public class ClienteService {
         existente.setCondicionIva(clienteActualizado.getCondicionIva());
         existente.setTelefono(clienteActualizado.getTelefono());
         existente.setEmail(clienteActualizado.getEmail());
+
+        // 🔥 AGREGAMOS ESTO: Mapeamos los nuevos saldos para permitir edición manual
+        existente.setSaldoAFavor(clienteActualizado.getSaldoAFavor());
+        existente.setSaldoPendiente(clienteActualizado.getSaldoPendiente());
 
         return guardarCliente(existente);
     }

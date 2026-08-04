@@ -71,4 +71,32 @@ public class ArticuloController {
             return ResponseEntity.status(409).build();
         }
     }
+
+    // 🔥 NUEVO: Sumar stock (cuando devuelven un producto)
+    @PutMapping("/{id}/restaurar-stock")
+    public ResponseEntity<?> restaurarStock(@PathVariable Long id, @RequestParam int cantidad) {
+        try {
+            Articulo actualizado = articuloService.restaurarStock(id, cantidad);
+            if (actualizado != null) {
+                return ResponseEntity.ok(actualizado);
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al restaurar stock: " + e.getMessage());
+        }
+    }
+
+    // 🔥 NUEVO: Restar stock (cuando se llevan un producto en el cambio)
+    @PutMapping("/{id}/descontar-stock")
+    public ResponseEntity<?> descontarStock(@PathVariable Long id, @RequestParam int cantidad) {
+        try {
+            Articulo actualizado = articuloService.descontarStock(id, cantidad);
+            if (actualizado != null) {
+                return ResponseEntity.ok(actualizado);
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al descontar stock: " + e.getMessage());
+        }
+    }
 }

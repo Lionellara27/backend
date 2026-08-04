@@ -87,8 +87,9 @@ public class CajaService {
             cajaVieja.setSaldoFinal(saldoFinal);
             cajaRepository.save(cajaVieja);
 
+            // 🔥 ACÁ ESTÁ EL ARREGLO CORRECTO (usuario en vez de null)
             movimientoCajaService.registrarMovimiento(
-                    cajaVieja, null, TipoMovimientoCaja.CIERRE_CAJA,
+                    cajaVieja, usuario, TipoMovimientoCaja.CIERRE_CAJA,
                     "Cierre Automático", "El sistema cerró la caja del día anterior", null, saldoFinal
             );
         }
