@@ -30,6 +30,9 @@ public class Venta {
     @Column(nullable = false)
     private Boolean esTicketCambio = false;
 
+    @Column(name = "es_para_regalo")
+    private Boolean esParaRegalo = false;
+
     // 🔥 BLINDAJE 4: Inicializamos la lista y sacamos el "java.util."
     @OneToMany(mappedBy = "ventaOriginal", cascade = CascadeType.ALL)
     private List<Cambio> historialCambios = new ArrayList<>();
@@ -54,4 +57,5 @@ public class Venta {
     public void prePersist() {
         this.fechaHora = LocalDateTime.now();
     }
+
 }

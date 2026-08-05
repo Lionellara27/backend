@@ -33,12 +33,43 @@ public class CambioService {
         Venta venta = ventaRepository.findById(idVentaOriginal)
                 .orElseThrow(() -> new RuntimeException("Venta original no encontrada con ID: " + idVentaOriginal));
 
-        // 2. Le asignamos la venta al cambio para que queden vinculados en la base de datos
+        // 🔥 ARREGLO 1: Límite de 2 cambios máximos
+        List<Cambio> historialActual = cambioRepository.findByVentaOriginalId(idVentaOriginal);
+        if (historialActual.size() >= 2) {
+            throw new RuntimeException("El sistema ha bloqueado esta venta: se alcanzó el límite máximo de 2 cambios permitidos.");
+        }
+
+        // 2. Le asignamos la venta al cambio para que queden vinculados
         nuevoCambio.setVentaOriginal(venta);
 
-        // (En el futuro, acá adentro también podemos meter la lógica de actualizar el stock automáticamente)
+        // 🔥 ARREGLO 2: Solución al error de Hibernate (not-null property)
+        // Y ARREGLO 3: Frenar el glitch de devoluciones infinitas (Mate Pampa)
+        if (nuevoCambio.getItemsDevueltos() != null) {
+            for (var itemDevuelto : nuevoCambio.getItemsDevueltos()) {
 
-        // 3. Guardamos
+                // A) Vinculamos el item devuelto con su Cambio padre (Soluciona el error de consola)
+                itemDevuelto.setCambio(nuevoCambio);
+
+                // B) Buscamos el detalle original en la venta y le sumamos la cantidad devuelta
+                for (DetalleVenta detalle : venta.getDetalles()) {
+                    if (detalle.getArticulo().getId().equals(itemDevuelto.getArticulo().getId())) {
+                        // Nos aseguramos de que no sea null
+                        int actual = detalle.getCantidadDevuelta() != null ? detalle.getCantidadDevuelta() : 0;
+                        detalle.setCantidadDevuelta(actual + itemDevuelto.getCantidad());
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 🔥 ARREGLO 2 (Continuación): Vinculamos también los items nuevos al Cambio
+        if (nuevoCambio.getItemsNuevos() != null) {
+            for (var itemNuevo : nuevoCambio.getItemsNuevos()) {
+                itemNuevo.setCambio(nuevoCambio);
+            }
+        }
+
+        // 3. Guardamos el cambio (Al tener @Transactional, los cambios en 'venta' se guardan solos)
         return cambioRepository.save(nuevoCambio);
     }
 

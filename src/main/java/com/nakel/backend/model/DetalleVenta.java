@@ -25,6 +25,10 @@ public class DetalleVenta {
     @Column(nullable = false)
     private BigDecimal subtotal;
 
+    // 🔥 EL NUEVO CAMPO: Para llevar la cuenta de las devoluciones y evitar el bug infinito
+    @Column(name = "cantidad_devuelta", nullable = false)
+    private Integer cantidadDevuelta = 0;
+
     // 🔥 BLINDAJE 1: Lazy + JsonIgnore (Para que no explote el Frontend)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venta_id", nullable = false)
