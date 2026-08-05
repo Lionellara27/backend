@@ -37,6 +37,7 @@ public class ProveedorController {
     }
 
     // ✏️ ACTUALIZAR (PUT)
+    // ✏️ ACTUALIZAR (PUT)
     @PutMapping("/{id}")
     public ResponseEntity<?> actualizarProveedor(@PathVariable Long id, @RequestBody Proveedor proveedorActualizado) {
         try {
@@ -46,9 +47,13 @@ public class ProveedorController {
                 proveedorExistente.setNombreContacto(proveedorActualizado.getNombreContacto());
                 proveedorExistente.setTelefono(proveedorActualizado.getTelefono());
                 proveedorExistente.setRubro(proveedorActualizado.getRubro());
-                proveedorExistente.setSaldo(proveedorActualizado.getSaldo());
                 proveedorExistente.setCuit(proveedorActualizado.getCuit());
                 proveedorExistente.setEmail(proveedorActualizado.getEmail());
+
+                // 🔥 ACÁ ESTÁN LOS REEMPLAZOS
+                proveedorExistente.setSaldoFavor(proveedorActualizado.getSaldoFavor());
+                proveedorExistente.setSaldoContra(proveedorActualizado.getSaldoContra());
+                proveedorExistente.setComentarios(proveedorActualizado.getComentarios());
 
                 Proveedor guardado = service.guardar(proveedorExistente);
                 return ResponseEntity.ok(guardado);

@@ -2,11 +2,7 @@ package com.nakel.backend.service;
 
 import com.nakel.backend.model.Proveedor;
 import com.nakel.backend.repository.ProveedorRepository;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,13 +37,11 @@ public class ProveedorService {
         repository.deleteById(id);
     }
 
-    @GetMapping("/buscar")
     public List<Proveedor> buscarPorNombre(String nombre) {
         return repository.findByRazonSocialContainingIgnoreCase(nombre);
     }
 
-    // 🔍 NUEVO: Endpoint para verificar CUIT
-    @GetMapping("/cuit/{cuit}")
+    // 🔍 Endpoint para verificar CUIT (Llamado por el Controller)
     public Optional<Proveedor> buscarPorCuit(String cuit) {
         return repository.findByCuit(cuit);
     }

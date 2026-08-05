@@ -22,7 +22,13 @@ public class Proveedor {
     private String telefono;
     private String email;
 
-    // 🔥 SOLO QUEDA ESTE
-    @Column(nullable = true)
-    private BigDecimal saldo = BigDecimal.ZERO;
+    // 🔥 NUEVOS CAMPOS (Reemplazan al saldo único)
+    @Column(name = "saldo_favor")
+    private BigDecimal saldoFavor = BigDecimal.ZERO;
+
+    @Column(name = "saldo_contra")
+    private BigDecimal saldoContra = BigDecimal.ZERO;
+
+    @Column(name = "comentarios", columnDefinition = "TEXT")
+    private String comentarios;
 }
