@@ -25,10 +25,28 @@ public class ClienteService {
         return repository.findAll(pageable);
     }
 
-    // 2. 🔥 Búsqueda Predictiva Paginada
     @Transactional(readOnly = true)
-    public Page<Cliente> buscarPorNombre(String nombre, Pageable pageable) {
-        return repository.findByNombreContainingIgnoreCase(nombre, pageable);
+    public Page<Cliente> buscarGlobal(String texto, Pageable pageable) {
+
+        if (texto == null || texto.isBlank()) {
+            return repository.findAll(pageable);
+        }
+
+        String busqueda = texto.trim();
+
+        // Si parece un CUIT/DNI, buscamos por CUIT
+        if (busqueda.matches("\\d+")) {
+            return repository.findByCuitContainingIgnoreCase(
+                    busqueda,
+                    pageable
+            );
+        }
+
+        // Si no, buscamos por nombre
+        return repository.findByNombreContainingIgnoreCase(
+                busqueda,
+                pageable
+        );
     }
 
     // 3. Validación de CUIT (Se mantiene igual, ¡está muy bien!)
