@@ -2,6 +2,9 @@ package com.nakel.backend.controller;
 
 import com.nakel.backend.model.Articulo;
 import com.nakel.backend.service.ArticuloService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,8 +24,20 @@ public class ArticuloController {
 
     // 📋 GET: Obtener todos los artículos
     @GetMapping
-    public List<Articulo> obtenerTodos() {
-        return articuloService.obtenerTodos();
+    public Page<Articulo> obtenerTodos(
+            @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) Long categoriaId,
+            @RequestParam(required = false) Long materialId,
+            @RequestParam(required = false) String origen,
+            @PageableDefault(size = 50) Pageable pageable) {
+
+        return articuloService.buscarConFiltros(
+                buscar,
+                categoriaId,
+                materialId,
+                origen,
+                pageable
+        );
     }
 
     // 🔍 GET: Buscar por código de barras / SKU

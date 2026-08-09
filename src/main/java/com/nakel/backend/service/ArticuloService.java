@@ -2,6 +2,8 @@ package com.nakel.backend.service;
 
 import com.nakel.backend.model.Articulo;
 import com.nakel.backend.repository.ArticuloRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,24 @@ public class ArticuloService {
     @Transactional(readOnly = true)
     public List<Articulo> obtenerTodos() {
         return articuloRepository.findAllOptimizado();
+    }
+
+    // 🔥 BÚSQUEDA + FILTROS + PAGINACIÓN REAL
+    @Transactional(readOnly = true)
+    public Page<Articulo> buscarConFiltros(
+            String buscar,
+            Long categoriaId,
+            Long materialId,
+            String origen,
+            Pageable pageable) {
+
+        return articuloRepository.buscarConFiltros(
+                buscar,
+                categoriaId,
+                materialId,
+                origen,
+                pageable
+        );
     }
 
     public Articulo guardarArticulo(Articulo articulo) {
