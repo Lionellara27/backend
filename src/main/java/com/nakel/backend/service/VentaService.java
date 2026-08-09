@@ -93,6 +93,8 @@ public class VentaService {
         return ventaGuardada;
     }
 
+    // 🔥 LE AGREGAMOS EL TRANSACTIONAL DE SOLO LECTURA PARA CUIDAR LA RAM
+    @Transactional(readOnly = true)
     public Page<Venta> obtenerTodasLasVentas(Pageable pageable) {
         return ventaRepository.findAll(pageable);
     }

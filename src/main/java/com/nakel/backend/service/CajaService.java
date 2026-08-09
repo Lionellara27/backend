@@ -8,7 +8,10 @@ import com.nakel.backend.model.Venta;
 import com.nakel.backend.repository.CajaRepository;
 import com.nakel.backend.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -143,9 +146,10 @@ public class CajaService {
         return cajaCerrada;
     }
 
-    // 📊 3. Traer todas las cajas para el Historial
-    public List<CajaDiaria> obtenerHistorialCajas() {
-        return cajaRepository.findAllByOrderByFechaAperturaDesc();
+    // 🔥 3. CIRUGÍA APLICADA: Traer el Historial PAGINADO (y con solo lectura para ahorrar RAM)
+    @Transactional(readOnly = true)
+    public Page<CajaDiaria> obtenerHistorialPaginado(Pageable pageable) {
+        return cajaRepository.findAll(pageable);
     }
 
     // 💵 4. Acumular Venta en la Caja Activa (🔥 SOPORTA MULTI-PAGOS Y TARJETAS)

@@ -3,11 +3,11 @@ package com.nakel.backend.controller;
 import com.nakel.backend.model.CajaDiaria;
 import com.nakel.backend.service.CajaService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/caja")
@@ -34,9 +34,9 @@ public class CajaController {
         }
     }
 
-    // Historial (Este queda igual porque solo lee datos)
+    // 🔥 CIRUGÍA APLICADA: Ahora recibe Pageable y devuelve una Page
     @GetMapping("/historial")
-    public ResponseEntity<List<CajaDiaria>> obtenerHistorial() {
-        return ResponseEntity.ok(cajaService.obtenerHistorialCajas());
+    public ResponseEntity<Page<CajaDiaria>> obtenerHistorial(Pageable pageable) {
+        return ResponseEntity.ok(cajaService.obtenerHistorialPaginado(pageable));
     }
 }

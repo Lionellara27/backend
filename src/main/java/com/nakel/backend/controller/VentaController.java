@@ -27,8 +27,8 @@ public class VentaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.procesarYGuardarVenta(venta, username));
     }
 
-    // Historial de Ventas (Este queda intacto)
-    @GetMapping
+    // 🔥 CAMBIO EXACTO: Le agregamos "/historial" a la ruta para que el Frontend lo encuentre
+    @GetMapping("/historial")
     public ResponseEntity<org.springframework.data.domain.Page<Venta>> obtenerHistorialVentas(org.springframework.data.domain.Pageable pageable) {
         return ResponseEntity.ok(service.obtenerTodasLasVentas(pageable));
     }

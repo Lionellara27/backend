@@ -2,10 +2,10 @@ package com.nakel.backend.controller;
 
 import com.nakel.backend.model.Proveedor;
 import com.nakel.backend.service.ProveedorService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/proveedores")
@@ -18,11 +18,29 @@ public class ProveedorController {
         this.service = service;
     }
 
-    // 📋 TRAER TODOS
+    // 📋 TRAER TODOS PAGINADOS / BUSCAR GLOBALMENTE
     @GetMapping
-    public List<Proveedor> obtenerTodos() {
-        // Usamos una lista simple para que el front lo procese rápido
-        return service.obtenerTodos();
+    public ResponseEntity<Page<Proveedor>> obtenerTodos(
+            @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) String campo,
+            Pageable pageable) {
+
+        if (buscar != null && !buscar.isBlank()) {
+            String texto = buscar.trim();
+
+            if ("Contacto".equalsIgnoreCase(campo)) {
+                return ResponseEntity.ok(
+                        service.buscarPorContacto(texto, pageable)
+                );
+            }
+
+            // Por defecto: Empresa
+            return ResponseEntity.ok(
+                    service.buscarPorNombre(texto, pageable)
+            );
+        }
+
+        return ResponseEntity.ok(service.obtenerTodos(pageable));
     }
 
     // ➕ GUARDAR NUEVO
@@ -36,12 +54,10 @@ public class ProveedorController {
         }
     }
 
-    // ✏️ ACTUALIZAR (PUT)
-    // ✏️ ACTUALIZAR (PUT)
+    // ✏️ ACTUALIZAR
     @PutMapping("/{id}")
     public ResponseEntity<?> actualizarProveedor(@PathVariable Long id, @RequestBody Proveedor proveedorActualizado) {
         try {
-            // Buscamos si el proveedor existe, le pisamos los datos viejos con los nuevos, y guardamos
             return service.obtenerPorId(id).map(proveedorExistente -> {
                 proveedorExistente.setRazonSocial(proveedorActualizado.getRazonSocial());
                 proveedorExistente.setNombreContacto(proveedorActualizado.getNombreContacto());
@@ -50,7 +66,7 @@ public class ProveedorController {
                 proveedorExistente.setCuit(proveedorActualizado.getCuit());
                 proveedorExistente.setEmail(proveedorActualizado.getEmail());
 
-                // 🔥 ACÁ ESTÁN LOS REEMPLAZOS
+                // 🔥 REEMPLAZOS
                 proveedorExistente.setSaldoFavor(proveedorActualizado.getSaldoFavor());
                 proveedorExistente.setSaldoContra(proveedorActualizado.getSaldoContra());
                 proveedorExistente.setComentarios(proveedorActualizado.getComentarios());
@@ -63,7 +79,7 @@ public class ProveedorController {
         }
     }
 
-    // 🗑️ ELIMINAR (DELETE)
+    // 🗑️ ELIMINAR
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminarProveedor(@PathVariable Long id) {
         try {
@@ -72,11 +88,6 @@ public class ProveedorController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
-    }
-
-    @GetMapping("/buscar")
-    public List<Proveedor> buscarPorNombre(@RequestParam String nombre) {
-        return service.buscarPorNombre(nombre);
     }
 
     // 🔍 Endpoint para verificar CUIT
