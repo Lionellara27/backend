@@ -2,6 +2,7 @@ package com.nakel.backend.service;
 
 import com.nakel.backend.model.Cliente;
 import com.nakel.backend.repository.ClienteRepository;
+import jakarta.annotation.PostConstruct;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +18,26 @@ public class ClienteService {
 
     public ClienteService(ClienteRepository repository) {
         this.repository = repository;
+    }
+
+    // 🔥 LA MAGIA: Este método se ejecuta solo apenas arranca el sistema
+    @PostConstruct
+    public void inicializarConsumidorFinal() {
+        // 1. Buscamos si ya existe el cliente con CUIT 00000000
+        if (repository.findByCuit("00000000").isEmpty()) {
+
+            // 2. Si no existe (porque es una PC nueva), lo creamos
+            Cliente consumidorFinal = new Cliente();
+            consumidorFinal.setNombre("Consumidor Final");
+            consumidorFinal.setCuit("00000000");
+            consumidorFinal.setTelefono("");
+            consumidorFinal.setEmail("");
+            consumidorFinal.setCondicionIva("CONSUMIDOR_FINAL");
+
+            // 3. Lo guardamos en la base de datos de la clienta
+            repository.save(consumidorFinal);
+            System.out.println("🛡️ Cliente 'Consumidor Final' creado automáticamente por defecto.");
+        }
     }
 
     // 1. 🔥 Listado Paginado: Adiós a traer miles de registros de golpe
@@ -49,7 +70,7 @@ public class ClienteService {
         );
     }
 
-    // 3. Validación de CUIT (Se mantiene igual, ¡está muy bien!)
+    // 3. Validación de CUIT
     @Transactional
     public Cliente guardarCliente(Cliente cliente) {
         if (cliente.getCuit() != null && !cliente.getCuit().isBlank()) {
@@ -66,7 +87,6 @@ public class ClienteService {
         return repository.findByCuit(cuit);
     }
 
-    // 4. Actualización (Se mantiene igual, bien lograda)
     // 4. Actualización
     @Transactional
     public Cliente actualizarCliente(Long id, Cliente clienteActualizado) {
@@ -86,7 +106,7 @@ public class ClienteService {
         return guardarCliente(existente);
     }
 
-    // 5. Eliminación (Se mantiene igual, bien lograda)
+    // 5. Eliminación
     @Transactional
     public void eliminarCliente(Long id) {
         if (!repository.existsById(id)) {

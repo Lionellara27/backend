@@ -34,13 +34,17 @@ public class VentaService {
     @Transactional
     public Venta procesarYGuardarVenta(Venta venta, String username) {
 
-        // 0. EL CONTROL POLICIAL DEL CLIENTE
-        if (venta.getCliente() != null && venta.getCliente().getCuit() != null) {
-            String cuitBuscado = venta.getCliente().getCuit();
-            com.nakel.backend.model.Cliente clienteReal = clienteRepository.findByCuit(cuitBuscado)
-                    .orElseThrow(() -> new RuntimeException("Error: No se encontró el cliente con CUIT " + cuitBuscado));
+        // 0. EL CONTROL POLICIAL DEL CLIENTE (Blindado por ID)
+        if (venta.getCliente() != null && venta.getCliente().getId() != null && venta.getCliente().getId() > 0) {
+            Long idBuscado = venta.getCliente().getId();
+
+            // Lo buscamos por su ID real de la base de datos, que es infalible
+            com.nakel.backend.model.Cliente clienteReal = clienteRepository.findById(idBuscado)
+                    .orElse(null); // Si no lo encuentra, no explota, lo pasa a nulo (Consumidor Final)
+
             venta.setCliente(clienteReal);
         } else {
+            // Cae acá directo si en el mostrador es una venta anónima
             venta.setCliente(null);
         }
 
@@ -97,10 +101,19 @@ public class VentaService {
     @Transactional(readOnly = true)
     public Page<Venta> obtenerHistorialConFiltros(String buscar, String criterio, int mes, Pageable pageable) {
         String mesStr = (mes == 0) ? "00" : String.format("%02d", mes);
-        return ventaRepository.buscarConFiltros(buscar, criterio, mesStr, pageable);
+
+        // 🔍 CHISMOSO BACKEND 1: Ver qué filtros están viajando desde la interfaz
+        System.out.println("🛠️ [BACKEND DEBUG] Consultando historial -> Buscar: '" + buscar + "' | Criterio: '" + criterio + "' | Mes recibido/formateado: " + mes + " (" + mesStr + ") | Página: " + pageable.getPageNumber());
+
+        Page<Venta> resultado = ventaRepository.buscarConFiltros(buscar, criterio, mesStr, pageable);
+
+        // 📊 CHISMOSO BACKEND 2: Ver cuántos registros encontró la base de datos en total con esos filtros
+        System.out.println("📊 [BACKEND DEBUG] Total de elementos encontrados en DB: " + resultado.getTotalElements());
+        System.out.println("📄 [BACKEND DEBUG] Total de páginas calculadas: " + resultado.getTotalPages());
+
+        return resultado;
     }
 
-    // 🔥 ACTUALIZADO: Ahora recibe el "criterio" para calcular la plata exacta
     @Transactional(readOnly = true)
     public Double obtenerTotalGlobal(String buscar, String criterio, int mes) {
         String mesStr = (mes == 0) ? "00" : String.format("%02d", mes);
