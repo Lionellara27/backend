@@ -37,6 +37,15 @@ public class CajaController {
     // 🔥 CIRUGÍA APLICADA: Ahora recibe Pageable y devuelve una Page
     @GetMapping("/historial")
     public ResponseEntity<Page<CajaDiaria>> obtenerHistorial(Pageable pageable) {
-        return ResponseEntity.ok(cajaService.obtenerHistorialPaginado(pageable));
+        System.out.println("🔍 [BACKEND-CAJAS-DEBUG] Petición recibida en /api/caja/historial");
+        System.out.println("   -> Página solicitada: " + pageable.getPageNumber() + " | Tamaño: " + pageable.getPageSize());
+
+        Page<CajaDiaria> paginaCajas = cajaService.obtenerHistorialPaginado(pageable);
+
+        System.out.println("   -> Total de cajas encontradas en la BD: " + paginaCajas.getTotalElements());
+        System.out.println("   -> Total de páginas calculadas: " + paginaCajas.getTotalPages());
+        System.out.println("   -> Cajas en esta página actual: " + paginaCajas.getNumberOfElements());
+
+        return ResponseEntity.ok(paginaCajas);
     }
 }
