@@ -93,18 +93,18 @@ public class VentaService {
         return ventaGuardada;
     }
 
-    // 🔥 ACTUALIZADO: Formatea el mes para que SQLite lo entienda sin explotar
+    // 🔥 ACTUALIZADO: Ahora recibe el "criterio" y se lo pasa al Repositorio
     @Transactional(readOnly = true)
-    public Page<Venta> obtenerHistorialConFiltros(String buscar, int mes, Pageable pageable) {
+    public Page<Venta> obtenerHistorialConFiltros(String buscar, String criterio, int mes, Pageable pageable) {
         String mesStr = (mes == 0) ? "00" : String.format("%02d", mes);
-        return ventaRepository.buscarConFiltros(buscar, mesStr, pageable);
+        return ventaRepository.buscarConFiltros(buscar, criterio, mesStr, pageable);
     }
 
-    // 🔥 ACTUALIZADO: Formatea el mes para la suma total
+    // 🔥 ACTUALIZADO: Ahora recibe el "criterio" para calcular la plata exacta
     @Transactional(readOnly = true)
-    public Double obtenerTotalGlobal(String buscar, int mes) {
+    public Double obtenerTotalGlobal(String buscar, String criterio, int mes) {
         String mesStr = (mes == 0) ? "00" : String.format("%02d", mes);
-        Double total = ventaRepository.obtenerTotalGlobal(buscar, mesStr);
+        Double total = ventaRepository.obtenerTotalGlobal(buscar, criterio, mesStr);
         return total != null ? total : 0.0;
     }
 }

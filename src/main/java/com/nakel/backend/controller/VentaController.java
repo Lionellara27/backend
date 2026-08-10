@@ -1,8 +1,8 @@
 package com.nakel.backend.controller;
 
 import com.nakel.backend.model.Venta;
-import com.nakel.backend.service.CorreoService;
 import com.nakel.backend.service.VentaService;
+import com.nakel.backend.service.CorreoService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -27,23 +27,25 @@ public class VentaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.procesarYGuardarVenta(venta, username));
     }
 
-    // 🔥 ACTUALIZADO: Ahora ataja la búsqueda y el mes que manda el Frontend
+    // 🔥 ACTUALIZADO: Ataja el 'criterio'
     @GetMapping("/historial")
     public ResponseEntity<Page<Venta>> obtenerHistorialVentas(
             @RequestParam(required = false) String buscar,
+            @RequestParam(required = false, defaultValue = "Nro. Comprobante") String criterio,
             @RequestParam(required = false, defaultValue = "0") int mes,
             Pageable pageable) {
 
-        return ResponseEntity.ok(service.obtenerHistorialConFiltros(buscar, mes, pageable));
+        return ResponseEntity.ok(service.obtenerHistorialConFiltros(buscar, criterio, mes, pageable));
     }
 
-    // 🔥 NUEVO: Ataja el pedido del total global y devuelve un Double
+    // 🔥 ACTUALIZADO: Ataja el 'criterio' para el total
     @GetMapping("/historial/total")
     public ResponseEntity<Double> obtenerTotalGlobal(
             @RequestParam(required = false) String buscar,
+            @RequestParam(required = false, defaultValue = "Nro. Comprobante") String criterio,
             @RequestParam(required = false, defaultValue = "0") int mes) {
 
-        return ResponseEntity.ok(service.obtenerTotalGlobal(buscar, mes));
+        return ResponseEntity.ok(service.obtenerTotalGlobal(buscar, criterio, mes));
     }
 
     @PostMapping("/{id}/enviar-correo")
