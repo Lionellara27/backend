@@ -42,6 +42,20 @@ public class ArticuloService {
         );
     }
 
+    // 🛒 BÚSQUEDA ESPECÍFICA PARA VENTA
+    // Busca en TODO el catálogo desde la BD,
+    // pero devuelve únicamente artículos con stock disponible.
+    @Transactional(readOnly = true)
+    public Page<Articulo> buscarParaVenta(
+            String buscar,
+            Pageable pageable) {
+
+        return articuloRepository.buscarParaVenta(
+                buscar,
+                pageable
+        );
+    }
+
     public Articulo guardarArticulo(Articulo articulo) {
         return articuloRepository.save(articulo);
     }
@@ -80,11 +94,10 @@ public class ArticuloService {
         }).orElse(null);
     }
 
-    // 🔥 NUEVO: Resta stock al artículo cuando el cliente se lo lleva en un cambio
+    // 🔥 Resta stock al artículo cuando el cliente se lo lleva en un cambio
     @Transactional
     public Articulo descontarStock(Long id, int cantidad) {
         return articuloRepository.findById(id).map(art -> {
-            // Restamos la cantidad al stock que ya tiene
             art.setStockActual(art.getStockActual() - cantidad);
             return articuloRepository.save(art);
         }).orElse(null);

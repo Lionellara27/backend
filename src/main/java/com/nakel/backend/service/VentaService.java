@@ -56,7 +56,7 @@ public class VentaService {
         if ("Presupuesto".equalsIgnoreCase(venta.getTipoComprobante())) {
             System.out.println("🛡️ Guardando Presupuesto: No se descuenta stock ni ingresa a la caja.");
             venta.setEsFiscal(false);
-            return ventaRepository.save(venta); // Lo guarda para el historial y CORTA el proceso acá.
+            return ventaRepository.save(venta);
         }
 
         // 🟢 DE ACÁ PARA ABAJO PASAN SOLO LAS VENTAS REALES 🟢
@@ -93,9 +93,18 @@ public class VentaService {
         return ventaGuardada;
     }
 
-    // 🔥 LE AGREGAMOS EL TRANSACTIONAL DE SOLO LECTURA PARA CUIDAR LA RAM
+    // 🔥 ACTUALIZADO: Formatea el mes para que SQLite lo entienda sin explotar
     @Transactional(readOnly = true)
-    public Page<Venta> obtenerTodasLasVentas(Pageable pageable) {
-        return ventaRepository.findAll(pageable);
+    public Page<Venta> obtenerHistorialConFiltros(String buscar, int mes, Pageable pageable) {
+        String mesStr = (mes == 0) ? "00" : String.format("%02d", mes);
+        return ventaRepository.buscarConFiltros(buscar, mesStr, pageable);
+    }
+
+    // 🔥 ACTUALIZADO: Formatea el mes para la suma total
+    @Transactional(readOnly = true)
+    public Double obtenerTotalGlobal(String buscar, int mes) {
+        String mesStr = (mes == 0) ? "00" : String.format("%02d", mes);
+        Double total = ventaRepository.obtenerTotalGlobal(buscar, mesStr);
+        return total != null ? total : 0.0;
     }
 }

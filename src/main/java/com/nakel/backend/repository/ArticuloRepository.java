@@ -96,4 +96,24 @@ public interface ArticuloRepository extends JpaRepository<Articulo, Long> {
     List<Articulo> findUltimoPorCategoria(
             @Param("categoriaId") Long categoriaId
     );
+
+    @Query("""
+    SELECT a
+    FROM Articulo a
+    LEFT JOIN a.categoria
+    LEFT JOIN a.material
+    WHERE a.stockActual > 0
+      AND (
+          :buscar IS NULL
+          OR :buscar = ''
+          OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', :buscar, '%'))
+          OR LOWER(a.codigo) LIKE LOWER(CONCAT('%', :buscar, '%'))
+          OR LOWER(a.categoria.nombre) LIKE LOWER(CONCAT('%', :buscar, '%'))
+          OR LOWER(a.material.nombre) LIKE LOWER(CONCAT('%', :buscar, '%'))
+      )
+    """)
+    Page<Articulo> buscarParaVenta(
+            @Param("buscar") String buscar,
+            Pageable pageable
+    );
 }

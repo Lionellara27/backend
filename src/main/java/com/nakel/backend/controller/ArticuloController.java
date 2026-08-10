@@ -22,15 +22,22 @@ public class ArticuloController {
         this.articuloService = articuloService;
     }
 
-    // 📋 GET: Obtener todos los artículos
+    // 📋 GET: Obtener todos los artículos (Con soporte para Mostrador y Catálogo)
     @GetMapping
     public Page<Articulo> obtenerTodos(
             @RequestParam(required = false) String buscar,
             @RequestParam(required = false) Long categoriaId,
             @RequestParam(required = false) Long materialId,
             @RequestParam(required = false) String origen,
+            @RequestParam(required = false) Boolean stockDisponible, // 🔥 ATajamos lo que manda el Mostrador
             @PageableDefault(size = 50) Pageable pageable) {
 
+        // 🛡️ REGLA DE ORO: Si es el Mostrador, filtramos por stock > 0
+        if (Boolean.TRUE.equals(stockDisponible)) {
+            return articuloService.buscarParaVenta(buscar, pageable);
+        }
+
+        // 📋 Si es el Catálogo, buscamos con todos los filtros normales
         return articuloService.buscarConFiltros(
                 buscar,
                 categoriaId,
@@ -57,7 +64,7 @@ public class ArticuloController {
         return articuloService.guardarArticulo(articulo);
     }
 
-    // 🔄 PUT: Actualizar/Editar artículo existente (¡EL QUE FALTABA!)
+    // 🔄 PUT: Actualizar/Editar artículo existente
     @PutMapping("/{id}")
     public ResponseEntity<Articulo> actualizarArticulo(@PathVariable Long id, @RequestBody Articulo articuloDetalles) {
         try {
@@ -71,18 +78,17 @@ public class ArticuloController {
         }
     }
 
-    // 🗑️ DELETE: Eliminar artículo por ID (¡EL QUE FALTABA!)
+    // 🗑️ DELETE: Eliminar artículo por ID
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarArticulo(@PathVariable Long id) {
         try {
             boolean borrado = articuloService.eliminarArticulo(id);
             if (borrado) {
-                return ResponseEntity.noContent().build(); // 204 No Content (Éxito)
+                return ResponseEntity.noContent().build();
             } else {
                 return ResponseEntity.notFound().build();
             }
         } catch (Exception e) {
-            // Si salta una restricción de clave foránea (artículo ya vendido), devuelve 409 Conflict o 500
             return ResponseEntity.status(409).build();
         }
     }
