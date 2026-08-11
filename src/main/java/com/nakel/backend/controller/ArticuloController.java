@@ -8,6 +8,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -118,6 +119,33 @@ public class ArticuloController {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al descontar stock: " + e.getMessage());
+        }
+    }
+    @PutMapping("/aumentar-precios")
+    public ResponseEntity<?> aumentarPrecios(
+            @RequestParam(required = false) Long categoriaId,
+            @RequestParam BigDecimal porcentaje) {
+
+        System.out.println("========== BACKEND AUMENTO MASIVO ==========");
+        System.out.println("📦 Categoría ID: " + categoriaId);
+        System.out.println("📈 Porcentaje: " + porcentaje);
+
+        try {
+            int cantidad = articuloService.aumentarPrecios(
+                    categoriaId,
+                    porcentaje
+            );
+
+            System.out.println("✅ Artículos actualizados: " + cantidad);
+
+            return ResponseEntity.ok(cantidad);
+
+        } catch (Exception e) {
+            System.err.println("❌ ERROR REAL EN AUMENTO MASIVO:");
+            e.printStackTrace();
+
+            return ResponseEntity.badRequest()
+                    .body("Error al aumentar precios: " + e.getMessage());
         }
     }
 }

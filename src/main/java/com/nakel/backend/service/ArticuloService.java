@@ -102,4 +102,17 @@ public class ArticuloService {
             return articuloRepository.save(art);
         }).orElse(null);
     }
+
+    // 🔥 AUMENTO MASIVO DE PRECIOS
+// Si categoriaId == null → aumenta todos los artículos.
+// Si categoriaId tiene valor → aumenta solamente esa categoría.
+    @Transactional
+    public int aumentarPrecios(Long categoriaId, java.math.BigDecimal porcentaje) {
+
+        if (porcentaje == null || porcentaje.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("El porcentaje debe ser mayor a 0.");
+        }
+
+        return articuloRepository.aumentarPrecios(categoriaId, porcentaje);
+    }
 }
