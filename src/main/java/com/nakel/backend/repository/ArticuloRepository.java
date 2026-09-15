@@ -17,42 +17,26 @@ import java.util.Optional;
 @Repository
 public interface ArticuloRepository extends JpaRepository<Articulo, Long> {
 
-    // 🔥 SOLUCIÓN AL N+1:
-    // Cruza categoría y material en una sola consulta.
-    // Se conserva para los lugares donde realmente necesitemos
-    // obtener todos los artículos de una vez.
+    // 🔥 SOLUCIÓN AL N+1: (Solo trae artículos activos)
     @Query("""
         SELECT a
         FROM Articulo a
         LEFT JOIN FETCH a.categoria
         LEFT JOIN FETCH a.material
+        WHERE a.activo = true
         """)
     List<Articulo> findAllOptimizado();
 
-    // 🔍 Buscar artículo por código/SKU
-    Optional<Articulo> findByCodigo(String codigo);
+    // 🔍 Buscar artículo por código/SKU (Solo activos)
+    @Query("SELECT a FROM Articulo a WHERE a.codigo = :codigo AND a.activo = true")
+    Optional<Articulo> findByCodigo(@Param("codigo") String codigo);
 
-    // 🔥 BÚSQUEDA + FILTROS + PAGINACIÓN REAL
-    //
-    // IMPORTANTE:
-    // Esta consulta filtra EN LA BASE DE DATOS.
-    // No trae los 20.000 artículos a Java para después filtrarlos.
-    //
-    // Ejemplo:
-    // 20.000 artículos
-    //       ↓
-    // origen = PRODUCCION_PROPIA
-    //       ↓
-    // 10.000 resultados
-    //       ↓
-    // página de 50
-    //       ↓
-    // solamente trae 50 artículos al frontend.
+    // 🔥 BÚSQUEDA + FILTROS + PAGINACIÓN REAL (Solo activos)
     @Query("""
         SELECT a
         FROM Articulo a
-        WHERE
-            (
+        WHERE a.activo = true
+            AND (
                 :buscar IS NULL
                 OR :buscar = ''
                 OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', :buscar, '%'))
@@ -80,32 +64,33 @@ public interface ArticuloRepository extends JpaRepository<Articulo, Long> {
             Pageable pageable
     );
 
-    // 🔥 Cuenta el total de productos en el catálogo
-    @Query("SELECT COUNT(a) FROM Articulo a")
+    // 🔥 Cuenta el total de productos ACTIVOS en el catálogo
+    @Query("SELECT COUNT(a) FROM Articulo a WHERE a.activo = true")
     Integer contarProductosTotales();
 
-    // 🔥 Cuenta cuántos productos están por debajo del stock mínimo
-    @Query("SELECT COUNT(a) FROM Articulo a WHERE a.stockActual <= a.stockMinimo")
+    // 🔥 Cuenta cuántos productos ACTIVOS están por debajo del stock mínimo
+    @Query("SELECT COUNT(a) FROM Articulo a WHERE a.activo = true AND a.stockActual <= a.stockMinimo")
     Integer contarStockCritico();
 
-    // 🔥 Busca los artículos de una categoría,
+    // 🔥 Busca los artículos ACTIVOS de una categoría,
     // ordenados desde el último registrado.
     @Query("""
         SELECT a
         FROM Articulo a
-        WHERE a.categoria.id = :categoriaId
+        WHERE a.activo = true AND a.categoria.id = :categoriaId
         ORDER BY a.id DESC
         """)
     List<Articulo> findUltimoPorCategoria(
             @Param("categoriaId") Long categoriaId
     );
 
+    // 🔥 Pantalla de venta: Solo activos y con stock
     @Query("""
     SELECT a
     FROM Articulo a
     LEFT JOIN a.categoria
     LEFT JOIN a.material
-    WHERE a.stockActual > 0
+    WHERE a.activo = true AND a.stockActual > 0
       AND (
           :buscar IS NULL
           OR :buscar = ''
@@ -120,13 +105,13 @@ public interface ArticuloRepository extends JpaRepository<Articulo, Long> {
             Pageable pageable
     );
 
+    // 🔥 Aumento masivo de precios (Solo impacta a los artículos activos)
     @Modifying
     @Transactional
     @Query("""
 UPDATE Articulo a
 SET a.precio = a.precio * (1 + :porcentaje / 100)
-WHERE :categoriaId IS NULL
-   OR a.categoria.id = :categoriaId
+WHERE a.activo = true AND (:categoriaId IS NULL OR a.categoria.id = :categoriaId)
 """)
     int aumentarPrecios(
             @Param("categoriaId") Long categoriaId,

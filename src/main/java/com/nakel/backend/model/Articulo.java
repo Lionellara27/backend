@@ -46,4 +46,8 @@ public class Articulo {
     // 🔥 AGREGAMOS ESTO: Para que el Dashboard sepa cuándo pintar la alerta roja
     @Column(nullable = false)
     private Integer stockMinimo = 8;
+
+    // 🔥 NUEVO: Bandera para el Borrado Lógico (Soft Delete)
+    @Column(nullable = false)
+    private boolean activo = true;
 }

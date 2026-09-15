@@ -56,22 +56,27 @@ public class ArticuloService {
         );
     }
 
+    @Transactional
     public Articulo guardarArticulo(Articulo articulo) {
         return articuloRepository.save(articulo);
     }
 
+    @Transactional(readOnly = true)
     public Articulo buscarPorCodigo(String codigo) {
         return articuloRepository.findByCodigo(codigo).orElse(null);
     }
 
+    // 🔥 ACÁ ESTÁ LA MAGIA: Borrado Lógico en vez de Borrado Físico
+    @Transactional
     public boolean eliminarArticulo(Long id) {
-        if (articuloRepository.existsById(id)) {
-            articuloRepository.deleteById(id);
+        return articuloRepository.findById(id).map(art -> {
+            art.setActivo(false); // Ocultamos el artículo
+            articuloRepository.save(art); // Guardamos el nuevo estado
             return true;
-        }
-        return false;
+        }).orElse(false);
     }
 
+    @Transactional
     public Articulo actualizarArticulo(Long id, Articulo articuloNuevo) {
         return articuloRepository.findById(id).map(art -> {
             art.setCodigo(articuloNuevo.getCodigo());
@@ -104,15 +109,11 @@ public class ArticuloService {
     }
 
     // 🔥 AUMENTO MASIVO DE PRECIOS
-// Si categoriaId == null → aumenta todos los artículos.
-// Si categoriaId tiene valor → aumenta solamente esa categoría.
     @Transactional
     public int aumentarPrecios(Long categoriaId, java.math.BigDecimal porcentaje) {
-
         if (porcentaje == null || porcentaje.compareTo(java.math.BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El porcentaje debe ser mayor a 0.");
         }
-
         return articuloRepository.aumentarPrecios(categoriaId, porcentaje);
     }
 }
