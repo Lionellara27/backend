@@ -51,3 +51,5 @@ public class Articulo {
     @Column(nullable = false)
     private boolean activo = true;
 }
+
+//
