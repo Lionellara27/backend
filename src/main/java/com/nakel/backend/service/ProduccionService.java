@@ -116,10 +116,10 @@ public class ProduccionService {
         java.util.List<Articulo> ultimos = articuloRepository.findUltimoPorCategoriaIncluyendoBajas(idCategoria);
 
         String partePrefijo = prefijoReal + "-";
-        int siguienteNum = 1;
 
-        // 3. Tomamos el primero (de más nuevo a más viejo) cuyo código termine en 4 números
-        //    y seguimos esa numeración. Los renombrados "-BAJA-" se saltean solos.
+        // 3. Del artículo más nuevo cuyo código termine en 4 números tomamos solo el PREFIJO
+        //    (por si los códigos de la categoría se escribieron distinto al prefijo configurado).
+        //    Los renombrados "-BAJA-" se saltean solos.
         if (ultimos != null) {
             for (Articulo art : ultimos) {
                 String sku = art.getCodigo();
@@ -127,13 +127,16 @@ public class ProduccionService {
                 String ultimosCuatro = sku.substring(sku.length() - 4);
                 if (ultimosCuatro.matches("\\d{4}")) {
                     partePrefijo = sku.substring(0, sku.length() - 4);
-                    siguienteNum = Integer.parseInt(ultimosCuatro) + 1;
                     break;
                 }
             }
         }
 
-        // 4. Nos aseguramos de que el código no exista ya (activo o dado de baja)
+        // 4. Se sugiere el PRIMER número libre empezando en 0001, así se rellenan los huecos:
+        //    con 0001 y 0010-0014 cargados sugiere 0002; con todo lleno hasta 0014, 0015.
+        //    (Antes seguía desde el último cargado y los huecos no se usaban nunca.)
+        //    Un código cuenta como ocupado aunque el artículo esté dado de baja.
+        int siguienteNum = 1;
         String candidato = partePrefijo + String.format("%04d", siguienteNum);
         int intentos = 0;
         while (articuloRepository.findFirstByCodigo(candidato).isPresent() && intentos < 10000) {

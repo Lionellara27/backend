@@ -18,10 +18,29 @@ public class ClienteService {
 
     private final ClienteRepository repository;
     private final VentaRepository ventaRepository;
+    private final ValeService valeService;
 
-    public ClienteService(ClienteRepository repository, VentaRepository ventaRepository) {
+    public ClienteService(ClienteRepository repository, VentaRepository ventaRepository, ValeService valeService) {
         this.repository = repository;
         this.ventaRepository = ventaRepository;
+        this.valeService = valeService;
+    }
+
+    /**
+     * El SALDO A FAVOR de un cliente no se escribe a mano: es la suma de sus vales vigentes.
+     * Sube cuando se le emite un vale, baja cuando lo usa y vuelve a 0 cuando el vale vence.
+     * Acá se calcula en el momento, cada vez que se muestra un cliente.
+     */
+    private Cliente conSaldoReal(Cliente cliente) {
+        if (cliente != null && cliente.getId() != null) {
+            cliente.setSaldoAFavor(valeService.saldoAFavorDe(cliente.getId()));
+        }
+        return cliente;
+    }
+
+    private Page<Cliente> conSaldoReal(Page<Cliente> pagina) {
+        pagina.forEach(this::conSaldoReal);
+        return pagina;
     }
 
     // 🔥 LA MAGIA: Este método se ejecuta solo apenas arranca el sistema
@@ -47,31 +66,31 @@ public class ClienteService {
     // 1. 🔥 Listado Paginado: Adiós a traer miles de registros de golpe
     @Transactional(readOnly = true)
     public Page<Cliente> obtenerTodos(Pageable pageable) {
-        return repository.findAll(pageable);
+        return conSaldoReal(repository.findAll(pageable));
     }
 
     @Transactional(readOnly = true)
     public Page<Cliente> buscarGlobal(String texto, Pageable pageable) {
 
         if (texto == null || texto.isBlank()) {
-            return repository.findAll(pageable);
+            return conSaldoReal(repository.findAll(pageable));
         }
 
         String busqueda = texto.trim();
 
         // Si parece un CUIT/DNI, buscamos por CUIT
         if (busqueda.matches("\\d+")) {
-            return repository.findByCuitContainingIgnoreCase(
+            return conSaldoReal(repository.findByCuitContainingIgnoreCase(
                     busqueda,
                     pageable
-            );
+            ));
         }
 
         // Si no, buscamos por nombre
-        return repository.findByNombreContainingIgnoreCase(
+        return conSaldoReal(repository.findByNombreContainingIgnoreCase(
                 busqueda,
                 pageable
-        );
+        ));
     }
 
     // 3. Validación de CUIT
@@ -96,9 +115,10 @@ public class ClienteService {
         if (cliente.getCondicionIva() == null || cliente.getCondicionIva().isBlank()) {
             cliente.setCondicionIva("CONSUMIDOR_FINAL");
         }
-        if (cliente.getSaldoAFavor() == null) {
-            cliente.setSaldoAFavor(java.math.BigDecimal.ZERO);
-        }
+        // El saldo a favor NUNCA se toma de lo que manda la pantalla: sale de los vales
+        cliente.setSaldoAFavor(cliente.getId() == null
+                ? java.math.BigDecimal.ZERO
+                : valeService.saldoAFavorDe(cliente.getId()));
         if (cliente.getSaldoPendiente() == null) {
             cliente.setSaldoPendiente(java.math.BigDecimal.ZERO);
         }
@@ -107,7 +127,7 @@ public class ClienteService {
 
     @Transactional(readOnly = true)
     public Optional<Cliente> buscarPorCuit(String cuit) {
-        return repository.findByCuit(cuit);
+        return repository.findByCuit(cuit).map(this::conSaldoReal);
     }
 
     // 4. Actualización
@@ -122,10 +142,8 @@ public class ClienteService {
         existente.setTelefono(clienteActualizado.getTelefono());
         existente.setEmail(clienteActualizado.getEmail());
 
-        // Saldos: solo se pisan si vienen informados (permite edición manual)
-        if (clienteActualizado.getSaldoAFavor() != null) {
-            existente.setSaldoAFavor(clienteActualizado.getSaldoAFavor());
-        }
+        // El saldo a favor no se edita a mano (lo calcula guardarCliente desde los vales).
+        // La deuda pendiente sí se puede corregir.
         if (clienteActualizado.getSaldoPendiente() != null) {
             existente.setSaldoPendiente(clienteActualizado.getSaldoPendiente());
         }

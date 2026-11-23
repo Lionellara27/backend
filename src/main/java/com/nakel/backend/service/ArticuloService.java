@@ -166,22 +166,5 @@ public class ArticuloService {
         }).orElse(null);
     }
 
-    // 🔥 AUMENTO MASIVO DE PRECIOS
-    // Se calcula en Java con BigDecimal y se redondea a 2 decimales.
-    @Transactional
-    public int aumentarPrecios(Long categoriaId, BigDecimal porcentaje) {
-        if (porcentaje == null || porcentaje.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("El porcentaje debe ser mayor a 0.");
-        }
-
-        BigDecimal factor = BigDecimal.ONE.add(
-                porcentaje.divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP));
-
-        List<Articulo> articulos = articuloRepository.findActivosParaAumento(categoriaId);
-        for (Articulo art : articulos) {
-            art.setPrecio(art.getPrecio().multiply(factor).setScale(2, RoundingMode.HALF_UP));
-        }
-        articuloRepository.saveAll(articulos);
-        return articulos.size();
-    }
+    // El aumento masivo de precios se mudó a AumentoPreciosService (guarda historial y se puede deshacer).
 }

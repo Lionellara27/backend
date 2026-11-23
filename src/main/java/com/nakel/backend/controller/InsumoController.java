@@ -39,8 +39,28 @@ public class InsumoController {
         return ResponseEntity.ok(resultados);
     }
 
+    // 🟢 GET: FILTROS DE LA PANTALLA "GESTIÓN DE INSUMOS" (sobre todos los insumos, paginado)
+    // Ejemplo: /api/insumos/filtrar?tipoMedicion=TIEMPO&page=0&size=20
+    @GetMapping("/filtrar")
+    public ResponseEntity<Page<Insumo>> filtrar(
+            @RequestParam(required = false) String texto,
+            @RequestParam(required = false) String tipoMedicion,
+            @RequestParam(required = false) Long idMaterial,
+            Pageable pageable) {
+        return ResponseEntity.ok(insumoService.filtrar(texto, tipoMedicion, idMaterial, pageable));
+    }
+
+    // 🟢 GET: LISTA PARA LA CALCULADORA DE PRODUCCIÓN (horas, después unidades, después superficie)
+    // Ejemplo: /api/insumos/calculadora?texto=cierre&page=0&size=20
+    @GetMapping("/calculadora")
+    public ResponseEntity<Page<Insumo>> listarParaCalculadora(
+            @RequestParam(required = false) String texto,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(insumoService.listarParaCalculadora(texto, page, size));
+    }
+
     // 🟢 POST: GUARDAR NUEVO
-// 🟢 POST: GUARDAR NUEVO
     @PostMapping
     public ResponseEntity<?> guardarInsumo(@RequestBody Insumo insumo) {
         try {

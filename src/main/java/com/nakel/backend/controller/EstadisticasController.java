@@ -20,4 +20,17 @@ public class EstadisticasController {
         DashboardDTO dashboard = estadisticasService.obtenerDatosDashboard();
         return ResponseEntity.ok(dashboard);
     }
+
+    @Autowired
+    private com.nakel.backend.service.EstadisticasResumenService resumenService;
+
+    // Todo el módulo de Estadísticas en una sola respuesta, para el período elegido:
+    // HOY, SEMANA (últimos 7 días), MES, MES_PASADO o ANIO.
+    @GetMapping("/resumen")
+    public ResponseEntity<java.util.Map<String, Object>> getResumen(
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "MES") String periodo,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer anio) {
+        // anio: solo se usa con periodo=ANIO (ej: 2026). Sin él, toma el año en curso.
+        return ResponseEntity.ok(resumenService.resumen(periodo, anio));
+    }
 }

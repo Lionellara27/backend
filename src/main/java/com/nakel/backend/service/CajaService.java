@@ -190,9 +190,20 @@ public class CajaService {
         CajaDiaria caja = obtenerOCrearCajaActual(username);
         Usuario usuario = resolverUsuario(username);
 
-        BigDecimal totalVenta = venta.getTotal();
+        // Lo pagado con vale NO es plata que entra hoy: esa plata ya entró el día de la compra original.
+        // Si se sumara, el mismo dinero quedaría contado dos veces en los ingresos.
+        BigDecimal pagadoConVale = BigDecimal.ZERO;
+        if (venta.getPagos() != null) {
+            for (Pago pago : venta.getPagos()) {
+                if (pago.getMetodoPago() != null && pago.getMonto() != null
+                        && pago.getMetodoPago().toLowerCase().contains("vale")) {
+                    pagadoConVale = pagadoConVale.add(pago.getMonto());
+                }
+            }
+        }
+        BigDecimal totalVenta = venta.getTotal().subtract(pagadoConVale).max(BigDecimal.ZERO);
 
-        // Sumar cantidad de ventas y total vendido
+        // Sumar cantidad de ventas y total COBRADO (sin vales)
         caja.setCantidadVentas(caja.getCantidadVentas() + 1);
         caja.setTotalVentas(caja.getTotalVentas().add(totalVenta));
 
@@ -211,10 +222,63 @@ public class CajaService {
             descripcionPago = venta.getPagos().get(0).getMetodoPago();
         }
 
+        // El detalle dice con qué se pagó cada parte: "Ticket #85 · Efectivo $10000 + Vale de Cambio $5000"
+        StringBuilder detalle = new StringBuilder("Ticket #" + venta.getId());
+        if (venta.getPagos() != null && !venta.getPagos().isEmpty()) {
+            detalle.append(" · ");
+            for (int i = 0; i < venta.getPagos().size(); i++) {
+                Pago pago = venta.getPagos().get(i);
+                if (i > 0) detalle.append(" + ");
+                detalle.append(pago.getMetodoPago()).append(" $").append(pago.getMonto().stripTrailingZeros().toPlainString());
+            }
+        }
+
         movimientoCajaService.registrarMovimiento(
                 caja, usuario, TipoMovimientoCaja.VENTA, "Venta realizada",
-                "Cobro de ticket #" + venta.getId(), descripcionPago, totalVenta
+                recortar(detalle.toString(), 500), descripcionPago, totalVenta
         );
+    }
+
+    private static String recortar(String texto, int maximo) {
+        if (texto == null) return null;
+        return texto.length() <= maximo ? texto : texto.substring(0, maximo - 1) + "…";
+    }
+
+    /**
+     * Deja asentado en la caja del día algo que NO mueve plata pero que hay que poder rastrear:
+     * un cambio de artículos, un vale emitido, un vale usado. No modifica ningún total.
+     * Si por algún motivo no se puede registrar, no frena la operación principal.
+     */
+    public void registrarMovimientoInformativo(TipoMovimientoCaja tipo, String concepto, String descripcion,
+                                               String medioPago, BigDecimal monto, String username) {
+        try {
+            CajaDiaria caja = obtenerOCrearCajaActual(username);
+            Usuario usuario = resolverUsuario(username);
+            movimientoCajaService.registrarMovimiento(
+                    caja, usuario, tipo, recortar(concepto, 100), recortar(descripcion, 500), medioPago,
+                    monto != null ? monto : BigDecimal.ZERO
+            );
+        } catch (Exception e) {
+            System.out.println("No se pudo registrar el movimiento informativo de caja: " + e.getMessage());
+        }
+    }
+
+    // Suma de ingresos de todas las cajas del período (los dos null = todas las cajas)
+    @Transactional(readOnly = true)
+    public BigDecimal sumarIngresos(LocalDate desde, LocalDate hasta) {
+        BigDecimal total = (desde == null || hasta == null)
+                ? cajaRepository.sumarIngresosDeTodas()
+                : cajaRepository.sumarIngresosEntre(desde, hasta);
+        return total != null ? total : BigDecimal.ZERO;
+    }
+
+    // 🔎 Historial filtrado por rango de fechas (mes o año elegido)
+    @Transactional(readOnly = true)
+    public Page<CajaDiaria> obtenerHistorialPaginado(LocalDate desde, LocalDate hasta, Pageable pageable) {
+        if (desde == null || hasta == null) {
+            return cajaRepository.findAll(pageable);
+        }
+        return cajaRepository.findByFechaBetween(desde, hasta, pageable);
     }
 
     // 🔁 4.1 Diferencia cobrada en un CAMBIO: antes no entraba a la caja en ningún lado.

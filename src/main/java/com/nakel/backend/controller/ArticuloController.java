@@ -142,10 +142,8 @@ public class ArticuloController {
         System.out.println("📈 Porcentaje: " + porcentaje);
 
         try {
-            int cantidad = articuloService.aumentarPrecios(
-                    categoriaId,
-                    porcentaje
-            );
+            // Queda anotado en el historial de aumentos, para poder deshacerlo durante 7 días
+            int cantidad = aumentoPreciosService.aumentarPorPorcentaje(categoriaId, porcentaje).getCantidadArticulos();
 
             System.out.println("✅ Artículos actualizados: " + cantidad);
 
@@ -159,10 +157,31 @@ public class ArticuloController {
                     .body("Error al aumentar precios: " + e.getMessage());
         }
     }
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.nakel.backend.service.AumentoPreciosService aumentoPreciosService;
+
+    // 📜 Historial de cambios masivos de precios (de a 7, del más nuevo al más viejo)
+    @GetMapping("/aumentos")
+    public ResponseEntity<?> historialDeAumentos(@RequestParam(defaultValue = "0") int page,
+                                                 @RequestParam(defaultValue = "7") int size) {
+        return ResponseEntity.ok(aumentoPreciosService.historial(page, size));
+    }
+
+    // ↩️ Deshace un cambio masivo de precios (solo dentro de los 7 días)
+    @PostMapping("/aumentos/{id}/deshacer")
+    public ResponseEntity<?> deshacerAumento(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(aumentoPreciosService.deshacer(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // 🖨️ NUEVO: Descargar Reporte de Stock en PDF
     @GetMapping("/reporte-stock")
-    public ResponseEntity<byte[]> descargarReporteStock() {
-        byte[] pdf = reportePdfService.generarReporteStock();
+    public ResponseEntity<byte[]> descargarReporteStock(@RequestParam(required = false) Integer mayorA) {
+        // mayorA: sin el parámetro = todos; 0 = solo con stock; N = con más de N unidades
+        byte[] pdf = reportePdfService.generarReporteStock(mayorA);
 
         org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);

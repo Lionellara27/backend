@@ -35,6 +35,28 @@ public class InsumoService {
         return insumoRepository.findAll(pageable);
     }
 
+    // 🟢 FILTROS DE LA PANTALLA "GESTIÓN DE INSUMOS": cualquiera puede venir vacío
+    @Transactional(readOnly = true)
+    public Page<Insumo> filtrar(String texto, String tipoMedicion, Long idMaterial, Pageable pageable) {
+        boolean sinTexto = texto == null || texto.isBlank();
+        boolean sinTipo = tipoMedicion == null || tipoMedicion.isBlank();
+        boolean sinMaterial = idMaterial == null;
+        return insumoRepository.filtrar(
+                sinTexto, sinTexto ? "" : texto.trim(),
+                sinTipo, sinTipo ? "" : tipoMedicion.trim().toUpperCase(),
+                sinMaterial, sinMaterial ? -1L : idMaterial,
+                pageable);
+    }
+
+    // 🟢 LISTA PARA LA CALCULADORA: horas primero, después unidades, después superficie
+    @Transactional(readOnly = true)
+    public Page<Insumo> listarParaCalculadora(String texto, int pagina, int tamanio) {
+        boolean sinTexto = texto == null || texto.isBlank();
+        // Sin orden en el Pageable: el orden lo fija la consulta
+        return insumoRepository.listarParaCalculadora(sinTexto, sinTexto ? "" : texto.trim(),
+                org.springframework.data.domain.PageRequest.of(Math.max(0, pagina), Math.max(1, tamanio)));
+    }
+
     // 🟢 BUSCADOR PREDICTIVO
     @Transactional(readOnly = true)
     public Page<Insumo> buscarPorNombre(String nombre, Pageable pageable) {

@@ -37,18 +37,48 @@ public class CajaController {
     // 🔥 CIRUGÍA APLICADA: Ahora recibe Pageable y devuelve una Page
     @GetMapping("/historial")
     public ResponseEntity<Page<CajaDiaria>> obtenerHistorial(
-            // Las cajas más nuevas primero (antes venían sin orden y las nuevas quedaban al final)
+            // Filtros opcionales: mes (1-12, 0 = todos) y año (0 = todos)
+            @RequestParam(required = false, defaultValue = "0") int mes,
+            @RequestParam(required = false, defaultValue = "0") int anio,
+            // Las cajas más nuevas primero salvo que la pantalla pida otro orden (?sort=totalVentas,desc)
             @org.springframework.data.web.PageableDefault(size = 20, sort = "fechaApertura",
                     direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
         System.out.println("🔍 [BACKEND-CAJAS-DEBUG] Petición recibida en /api/caja/historial");
         System.out.println("   -> Página solicitada: " + pageable.getPageNumber() + " | Tamaño: " + pageable.getPageSize());
 
-        Page<CajaDiaria> paginaCajas = cajaService.obtenerHistorialPaginado(pageable);
+        java.time.LocalDate[] rango = rangoDeFechas(mes, anio);
+        Page<CajaDiaria> paginaCajas = cajaService.obtenerHistorialPaginado(rango[0], rango[1], pageable);
 
         System.out.println("   -> Total de cajas encontradas en la BD: " + paginaCajas.getTotalElements());
         System.out.println("   -> Total de páginas calculadas: " + paginaCajas.getTotalPages());
         System.out.println("   -> Cajas en esta página actual: " + paginaCajas.getNumberOfElements());
 
         return ResponseEntity.ok(paginaCajas);
+    }
+
+    // Suma de ingresos de TODAS las cajas del período elegido (no solo de la página que se ve)
+    @GetMapping("/historial/total")
+    public ResponseEntity<java.math.BigDecimal> obtenerTotalHistorial(
+            @RequestParam(required = false, defaultValue = "0") int mes,
+            @RequestParam(required = false, defaultValue = "0") int anio) {
+        java.time.LocalDate[] rango = rangoDeFechas(mes, anio);
+        return ResponseEntity.ok(cajaService.sumarIngresos(rango[0], rango[1]));
+    }
+
+    // Convierte mes/año en un rango [desde, hasta]. Los dos null = sin filtro de fecha.
+    private java.time.LocalDate[] rangoDeFechas(int mes, int anio) {
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        java.time.LocalDate desde = null;
+        java.time.LocalDate hasta = null;
+        if (mes >= 1 && mes <= 12) {
+            // Solo mes: se entiende el más reciente (en enero, "Diciembre" es el del año pasado)
+            int anioReal = anio > 0 ? anio : (mes > hoy.getMonthValue() ? hoy.getYear() - 1 : hoy.getYear());
+            desde = java.time.LocalDate.of(anioReal, mes, 1);
+            hasta = desde.plusMonths(1).minusDays(1);
+        } else if (anio > 0) {
+            desde = java.time.LocalDate.of(anio, 1, 1);
+            hasta = java.time.LocalDate.of(anio, 12, 31);
+        }
+        return new java.time.LocalDate[]{desde, hasta};
     }
 }

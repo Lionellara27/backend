@@ -36,6 +36,10 @@ public class Vale {
     @Column(nullable = true)
     private Long idCliente;
 
+    // Por qué se emitió: "Cambio sobre venta #85", "Vuelto", "Atención al cliente"...
+    @Column(length = 300)
+    private String motivo;
+
     @PrePersist
     public void prePersist() {
         this.fechaEmision = LocalDateTime.now();

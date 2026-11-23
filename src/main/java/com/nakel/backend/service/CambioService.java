@@ -52,6 +52,11 @@ public class CambioService {
         Venta venta = ventaRepository.findById(idVentaOriginal)
                 .orElseThrow(() -> new RuntimeException("Venta original no encontrada con ID: " + idVentaOriginal));
 
+        // Un presupuesto no es una venta: no salió mercadería, así que no hay nada que cambiar
+        if ("Presupuesto".equalsIgnoreCase(venta.getTipoComprobante())) {
+            throw new RuntimeException("Un presupuesto no admite cambios ni devoluciones.");
+        }
+
         // 🔥 Límite de 2 cambios máximos
         List<Cambio> historialActual = cambioRepository.findByVentaOriginalId(idVentaOriginal);
         if (historialActual.size() >= 2) {
@@ -60,8 +65,12 @@ public class CambioService {
 
         List<ItemCambio> devueltos = nuevoCambio.getItemsDevueltos();
         List<ItemCambio> nuevos = nuevoCambio.getItemsNuevos();
-        if (devueltos.isEmpty() && nuevos.isEmpty()) {
-            throw new RuntimeException("El cambio está vacío: no se devuelve ni se lleva ningún artículo.");
+        // Un cambio siempre devuelve algo. Llevarse artículos sin devolver nada es una venta,
+        // y las ventas van por el Mostrador (ahí se controla stock, caja y comprobante).
+        if (devueltos.isEmpty()) {
+            throw new RuntimeException(nuevos.isEmpty()
+                    ? "El cambio está vacío: no se devuelve ni se lleva ningún artículo."
+                    : "Un cambio tiene que devolver al menos un artículo. Para vender algo nuevo, usá el Mostrador.");
         }
 
         // 2. Le asignamos la venta al cambio para que queden vinculados
@@ -130,7 +139,7 @@ public class CambioService {
         if (diferencia.signum() < 0) {
             // Sobra plata a favor del cliente: se emite el vale acá adentro, en la misma transacción
             Long idCliente = venta.getCliente() != null ? venta.getCliente().getId() : null;
-            Vale vale = valeService.generarVale(diferencia.abs(), idCliente);
+            Vale vale = valeService.generarVale(diferencia.abs(), idCliente, "Cambio sobre la venta #" + idVentaOriginal);
             nuevoCambio.setCodigoValeGenerado(vale.getCodigo());
             nuevoCambio.setMetodoPago(null);
         } else {
@@ -140,7 +149,25 @@ public class CambioService {
         // 7. Guardamos el cambio (los renglones de la venta se guardan solos por @Transactional)
         Cambio guardado = cambioRepository.save(nuevoCambio);
 
-        // 8. Si el cliente pagó una diferencia, esa plata entra a la caja del día
+        // 8. Trazabilidad: el cambio queda asentado en la caja del día aunque no mueva plata
+        String resumen = nuevoCambio.getResumenArticulos() != null ? nuevoCambio.getResumenArticulos() : "";
+        cajaService.registrarMovimientoInformativo(
+                com.nakel.backend.model.TipoMovimientoCaja.DEVOLUCION,
+                "Cambio sobre venta #" + idVentaOriginal,
+                resumen + " (devuelto $" + totalDevuelto.stripTrailingZeros().toPlainString()
+                        + ", nuevo $" + totalNuevo.stripTrailingZeros().toPlainString() + ")",
+                null, totalDevuelto, username);
+
+        // 9. Si se emitió un vale, también queda asentado (no es plata que sale de la caja)
+        if (nuevoCambio.getCodigoValeGenerado() != null) {
+            cajaService.registrarMovimientoInformativo(
+                    com.nakel.backend.model.TipoMovimientoCaja.AJUSTE,
+                    "Vale emitido " + nuevoCambio.getCodigoValeGenerado(),
+                    "Saldo a favor por el cambio sobre la venta #" + idVentaOriginal,
+                    "Vale de Cambio", diferencia.abs(), username);
+        }
+
+        // 10. Si el cliente pagó una diferencia, esa plata entra a la caja del día
         if (diferencia.signum() > 0) {
             registrarDiferenciaEnCaja(idVentaOriginal, nuevoCambio, diferencia, username);
         }
