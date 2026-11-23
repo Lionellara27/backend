@@ -28,6 +28,9 @@ public class ProduccionService {
     @Autowired
     private MaterialRepository materialRepository;
 
+    @Autowired
+    private ArticuloService articuloService;
+
     @Transactional(rollbackFor = Exception.class) // 🔥 Si algo falla, deshace todo
     public void procesarFabricacionYAlta(ProduccionRequestDTO dto) throws Exception {
 
@@ -75,6 +78,9 @@ public class ProduccionService {
             nuevoArticulo.setMaterial(mat);
         }
 
+        // Si el código lo tiene un artículo dado de baja lo liberamos; si lo tiene uno activo, error claro
+        articuloService.liberarCodigo(nuevoArticulo.getCodigo(), null);
+
         // Guardamos el artículo en la BD
         articuloRepository.save(nuevoArticulo);
 
@@ -105,25 +111,36 @@ public class ProduccionService {
                 ? categoria.getPrefijoSku().trim()
                 : String.format("%04d", idCategoria);
 
-        // 2. Buscamos el último artículo guardado en esta categoría
-        java.util.List<Articulo> ultimos = articuloRepository.findUltimoPorCategoria(idCategoria);
+        // 2. Buscamos el último artículo de la categoría, CONTANDO los dados de baja:
+        //    su código sigue ocupado en la base, así que no se puede volver a entregar.
+        java.util.List<Articulo> ultimos = articuloRepository.findUltimoPorCategoriaIncluyendoBajas(idCategoria);
 
-        // 3. Si no hay ningún artículo previo (categoría virgen como Mochila), arranca limpio con prefijo + "-0001"
-        if (ultimos == null || ultimos.isEmpty()) {
-            return prefijoReal + "-0001";
+        String partePrefijo = prefijoReal + "-";
+        int siguienteNum = 1;
+
+        // 3. Tomamos el primero (de más nuevo a más viejo) cuyo código termine en 4 números
+        //    y seguimos esa numeración. Los renombrados "-BAJA-" se saltean solos.
+        if (ultimos != null) {
+            for (Articulo art : ultimos) {
+                String sku = art.getCodigo();
+                if (sku == null || sku.length() < 4 || sku.contains("-BAJA-")) continue;
+                String ultimosCuatro = sku.substring(sku.length() - 4);
+                if (ultimosCuatro.matches("\\d{4}")) {
+                    partePrefijo = sku.substring(0, sku.length() - 4);
+                    siguienteNum = Integer.parseInt(ultimosCuatro) + 1;
+                    break;
+                }
+            }
         }
 
-        // 4. Si ya tiene artículos (como Mate), toma el último y le suma 1 al número correlativo
-        String ultimoSku = ultimos.get(0).getCodigo();
-        try {
-            String ultimosCuatro = ultimoSku.substring(ultimoSku.length() - 4);
-            int siguienteNum = Integer.parseInt(ultimosCuatro) + 1;
-
-            // Mantiene la estructura de prefijo que ya traía el último
-            String partePrefijo = ultimoSku.substring(0, ultimoSku.length() - 4);
-            return partePrefijo + String.format("%04d", siguienteNum);
-        } catch (Exception e) {
-            return prefijoReal + "-0001";
+        // 4. Nos aseguramos de que el código no exista ya (activo o dado de baja)
+        String candidato = partePrefijo + String.format("%04d", siguienteNum);
+        int intentos = 0;
+        while (articuloRepository.findFirstByCodigo(candidato).isPresent() && intentos < 10000) {
+            siguienteNum++;
+            intentos++;
+            candidato = partePrefijo + String.format("%04d", siguienteNum);
         }
+        return candidato;
     }
 }

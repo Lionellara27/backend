@@ -8,50 +8,60 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+
 @Repository
 public interface VentaRepository extends JpaRepository<Venta, Long> {
 
-    // 🔥 ARREGLO DEFINITIVO: Sin JOIN FETCH, con Count explícito y EntityGraph (Cero N+1 y paginación perfecta)
+    // Cuántas ventas tiene un cliente (para impedir borrar clientes con historial)
+    long countByClienteId(Long clienteId);
+
+    // Historial con filtros. El mes se filtra por RANGO de fechas (desde/hasta):
+    // SQLite guarda la fecha como número, así que buscar el texto "-09-" no encontraba nada.
     @EntityGraph(attributePaths = {"cliente"})
     @org.springframework.data.jpa.repository.Query(
             value = """
-            SELECT v FROM Venta v LEFT JOIN v.cliente c 
-            WHERE (:mesStr = '00' OR CAST(v.fechaHora AS string) LIKE CONCAT('%-', :mesStr, '-%')) 
-            AND (:buscar IS NULL OR :buscar = '' 
+            SELECT v FROM Venta v LEFT JOIN v.cliente c
+            WHERE (:sinFecha = true OR (v.fechaHora >= :desde AND v.fechaHora < :hasta))
+            AND (:buscar IS NULL OR :buscar = ''
                  OR (:criterio = 'Nro. Comprobante' AND CAST(v.id AS string) = :buscar)
                  OR (:criterio = 'Cliente (Nombre/DNI)' AND (LOWER(c.nombre) LIKE LOWER(CONCAT('%', :buscar, '%')) OR LOWER(c.cuit) LIKE LOWER(CONCAT('%', :buscar, '%'))))
                 )
         """,
             countQuery = """
-            SELECT COUNT(v) FROM Venta v LEFT JOIN v.cliente c 
-            WHERE (:mesStr = '00' OR CAST(v.fechaHora AS string) LIKE CONCAT('%-', :mesStr, '-%')) 
-            AND (:buscar IS NULL OR :buscar = '' 
+            SELECT COUNT(v) FROM Venta v LEFT JOIN v.cliente c
+            WHERE (:sinFecha = true OR (v.fechaHora >= :desde AND v.fechaHora < :hasta))
+            AND (:buscar IS NULL OR :buscar = ''
                  OR (:criterio = 'Nro. Comprobante' AND CAST(v.id AS string) = :buscar)
                  OR (:criterio = 'Cliente (Nombre/DNI)' AND (LOWER(c.nombre) LIKE LOWER(CONCAT('%', :buscar, '%')) OR LOWER(c.cuit) LIKE LOWER(CONCAT('%', :buscar, '%'))))
                 )
         """
     )
-    Page<Venta> buscarConFiltros(@Param("buscar") String buscar, @Param("criterio") String criterio, @Param("mesStr") String mesStr, Pageable pageable);
+    Page<Venta> buscarConFiltros(@Param("buscar") String buscar, @Param("criterio") String criterio,
+                                 @Param("sinFecha") boolean sinFecha,
+                                 @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta,
+                                 Pageable pageable);
 
-    // 🔥 La del total queda INTACTA porque usa LEFT JOIN simple (no rompe nada)
     @org.springframework.data.jpa.repository.Query("""
-        SELECT SUM(v.total) FROM Venta v LEFT JOIN v.cliente c 
-        WHERE v.tipoComprobante != 'Presupuesto' 
-        AND (:mesStr = '00' OR CAST(v.fechaHora AS string) LIKE CONCAT('%-', :mesStr, '-%')) 
-        AND (:buscar IS NULL OR :buscar = '' 
+        SELECT SUM(v.total) FROM Venta v LEFT JOIN v.cliente c
+        WHERE (v.tipoComprobante IS NULL OR v.tipoComprobante <> 'Presupuesto')
+        AND (:sinFecha = true OR (v.fechaHora >= :desde AND v.fechaHora < :hasta))
+        AND (:buscar IS NULL OR :buscar = ''
              OR (:criterio = 'Nro. Comprobante' AND CAST(v.id AS string) = :buscar)
              OR (:criterio = 'Cliente (Nombre/DNI)' AND (LOWER(c.nombre) LIKE LOWER(CONCAT('%', :buscar, '%')) OR LOWER(c.cuit) LIKE LOWER(CONCAT('%', :buscar, '%'))))
             )
     """)
-    Double obtenerTotalGlobal(@Param("buscar") String buscar, @Param("criterio") String criterio, @Param("mesStr") String mesStr);
+    Double obtenerTotalGlobal(@Param("buscar") String buscar, @Param("criterio") String criterio,
+                              @Param("sinFecha") boolean sinFecha,
+                              @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
 
     // -----------------------------------------------------------------------------
-    // TUS CONSULTAS ORIGINALES (INTACTAS PARA FUTURAS ESTADÍSTICAS)
+    // CONSULTAS PARA ESTADÍSTICAS
     // -----------------------------------------------------------------------------
 
-    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v WHERE v.fechaHora >= :inicio AND v.fechaHora <= :fin AND v.tipoComprobante != 'Presupuesto'")
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v WHERE v.fechaHora >= :inicio AND v.fechaHora <= :fin AND (v.tipoComprobante IS NULL OR v.tipoComprobante <> 'Presupuesto')")
     java.math.BigDecimal sumarVentasEntreFechas(@Param("inicio") java.time.LocalDateTime inicio, @Param("fin") java.time.LocalDateTime fin);
 
-    @org.springframework.data.jpa.repository.Query("SELECT COUNT(v) FROM Venta v WHERE v.fechaHora >= :inicio AND v.fechaHora <= :fin AND v.tipoComprobante != 'Presupuesto'")
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(v) FROM Venta v WHERE v.fechaHora >= :inicio AND v.fechaHora <= :fin AND (v.tipoComprobante IS NULL OR v.tipoComprobante <> 'Presupuesto')")
     Integer contarVentasEntreFechas(@Param("inicio") java.time.LocalDateTime inicio, @Param("fin") java.time.LocalDateTime fin);
 }

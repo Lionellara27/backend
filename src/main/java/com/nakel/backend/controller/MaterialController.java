@@ -24,13 +24,21 @@ public class MaterialController {
     }
 
     @PostMapping
-    public ResponseEntity<Material> guardar(@RequestBody Material material) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(materialService.guardar(material));
+    public ResponseEntity<?> guardar(@RequestBody Material material) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(materialService.guardar(material));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
-        materialService.eliminar(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> eliminar(@PathVariable Long id) {
+        try {
+            materialService.eliminar(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

@@ -37,6 +37,18 @@ public class Cambio {
     @OneToMany(mappedBy = "cambio", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemCambio> items = new ArrayList<>();
 
+    // Cómo se cobró la diferencia (lo manda la pantalla de pago). NO se guarda en la tabla:
+    // sirve para repartir la plata en los rubros de la caja al registrar el cambio.
+    @Transient
+    private List<PagoCambio> pagos = new ArrayList<>();
+
+    @Getter
+    @Setter
+    public static class PagoCambio {
+        private String metodoPago;
+        private Double monto;
+    }
+
     // 🔥 MÉTODOS HELPERS QUE EL SERVICIO NECESITA PARA FILTRAR
     public List<ItemCambio> getItemsDevueltos() {
         if (items == null) return new ArrayList<>();

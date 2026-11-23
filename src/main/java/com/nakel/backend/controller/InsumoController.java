@@ -44,9 +44,12 @@ public class InsumoController {
     @PostMapping
     public ResponseEntity<?> guardarInsumo(@RequestBody Insumo insumo) {
         try {
-            // 🔥 AQUÍ ESTÁ EL CAMBIO:
-            // Antes de guardar, inicializamos el stock en base a la categoría y lotes
-            insumo.inicializarStock();
+            // El stock se inicializa con el lote SOLO cuando el insumo es nuevo (sin id).
+            // La pantalla también usa este POST para editar: antes, al editar cualquier dato,
+            // el stock actual volvía al valor del lote completo.
+            if (insumo.getId() == null) {
+                insumo.inicializarStock();
+            }
 
             Insumo insumoGuardado = insumoService.guardarInsumo(insumo);
             return ResponseEntity.status(HttpStatus.CREATED).body(insumoGuardado);

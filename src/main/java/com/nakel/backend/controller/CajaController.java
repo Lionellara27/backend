@@ -36,7 +36,10 @@ public class CajaController {
 
     // 🔥 CIRUGÍA APLICADA: Ahora recibe Pageable y devuelve una Page
     @GetMapping("/historial")
-    public ResponseEntity<Page<CajaDiaria>> obtenerHistorial(Pageable pageable) {
+    public ResponseEntity<Page<CajaDiaria>> obtenerHistorial(
+            // Las cajas más nuevas primero (antes venían sin orden y las nuevas quedaban al final)
+            @org.springframework.data.web.PageableDefault(size = 20, sort = "fechaApertura",
+                    direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
         System.out.println("🔍 [BACKEND-CAJAS-DEBUG] Petición recibida en /api/caja/historial");
         System.out.println("   -> Página solicitada: " + pageable.getPageNumber() + " | Tamaño: " + pageable.getPageSize());
 

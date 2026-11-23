@@ -25,12 +25,20 @@ public class CategoriaController {
 
     @PostMapping
     public ResponseEntity<?> guardar(@RequestBody Categoria categoria) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(categoriaService.guardarCategoria(categoria));
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(categoriaService.guardarCategoria(categoria));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminar(@PathVariable Long id) {
-        categoriaService.eliminarCategoria(id);
-        return ResponseEntity.noContent().build();
+        try {
+            categoriaService.eliminarCategoria(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

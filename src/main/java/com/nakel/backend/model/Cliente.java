@@ -38,6 +38,7 @@ public class Cliente {
     private BigDecimal saldoPendiente = BigDecimal.ZERO;
 
     @com.fasterxml.jackson.annotation.JsonIgnore
-    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
+    // SIN cascade ni orphanRemoval: borrar un cliente NUNCA debe arrastrar sus ventas.
+    @OneToMany(mappedBy = "cliente")
     private List<Venta> ventas = new ArrayList<>();
 }

@@ -7,7 +7,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ArticuloService {
@@ -58,6 +61,14 @@ public class ArticuloService {
 
     @Transactional
     public Articulo guardarArticulo(Articulo articulo) {
+        validarDatos(articulo);
+        liberarCodigo(articulo.getCodigo(), articulo.getId());
+        if (articulo.getAlicuotaIva() == null) {
+            articulo.setAlicuotaIva(21.0);
+        }
+        if (articulo.getStockMinimo() == null) {
+            articulo.setStockMinimo(8);
+        }
         return articuloRepository.save(articulo);
     }
 
@@ -78,7 +89,9 @@ public class ArticuloService {
 
     @Transactional
     public Articulo actualizarArticulo(Long id, Articulo articuloNuevo) {
+        validarDatos(articuloNuevo);
         return articuloRepository.findById(id).map(art -> {
+            liberarCodigo(articuloNuevo.getCodigo(), id);
             art.setCodigo(articuloNuevo.getCodigo());
             art.setNombre(articuloNuevo.getNombre());
             art.setPrecio(articuloNuevo.getPrecio());
@@ -88,6 +101,47 @@ public class ArticuloService {
             art.setMaterial(articuloNuevo.getMaterial());
             return articuloRepository.save(art);
         }).orElse(null);
+    }
+
+    // Validaciones básicas con mensajes que la usuaria pueda entender
+    private void validarDatos(Articulo articulo) {
+        if (articulo.getCodigo() == null || articulo.getCodigo().isBlank()) {
+            throw new IllegalArgumentException("El código del artículo es obligatorio.");
+        }
+        articulo.setCodigo(articulo.getCodigo().trim());
+        if (articulo.getNombre() == null || articulo.getNombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre del artículo es obligatorio.");
+        }
+        if (articulo.getPrecio() == null || articulo.getPrecio().signum() < 0) {
+            throw new IllegalArgumentException("El precio debe ser un número mayor o igual a 0.");
+        }
+        if (articulo.getStockActual() == null || articulo.getStockActual() < 0) {
+            throw new IllegalArgumentException("El stock debe ser un número mayor o igual a 0.");
+        }
+    }
+
+    /**
+     * El código es ÚNICO en la base aunque el artículo esté dado de baja (borrado lógico).
+     * - Si lo usa otro artículo ACTIVO: error claro.
+     * - Si lo usa uno dado de baja: le cambiamos el código al viejo para liberar el número
+     *   (el artículo viejo sigue existiendo para no romper el historial de ventas).
+     */
+    @Transactional
+    public void liberarCodigo(String codigo, Long idPropio) {
+        if (codigo == null) return;
+        Optional<Articulo> existente = articuloRepository.findFirstByCodigo(codigo.trim());
+        if (existente.isEmpty()) return;
+
+        Articulo otro = existente.get();
+        if (otro.getId().equals(idPropio)) return;
+
+        if (otro.isActivo()) {
+            throw new IllegalArgumentException("Ya existe un artículo con el código " + codigo
+                    + " (" + otro.getNombre() + ").");
+        }
+
+        otro.setCodigo(otro.getCodigo() + "-BAJA-" + otro.getId());
+        articuloRepository.saveAndFlush(otro);
     }
 
     // 🔥 NUEVO: Suma stock al artículo cuando el cliente lo devuelve
@@ -103,17 +157,31 @@ public class ArticuloService {
     @Transactional
     public Articulo descontarStock(Long id, int cantidad) {
         return articuloRepository.findById(id).map(art -> {
+            if (art.getStockActual() < cantidad) {
+                throw new IllegalArgumentException("Stock insuficiente de " + art.getNombre()
+                        + " (quedan " + art.getStockActual() + ").");
+            }
             art.setStockActual(art.getStockActual() - cantidad);
             return articuloRepository.save(art);
         }).orElse(null);
     }
 
     // 🔥 AUMENTO MASIVO DE PRECIOS
+    // Se calcula en Java con BigDecimal y se redondea a 2 decimales.
     @Transactional
-    public int aumentarPrecios(Long categoriaId, java.math.BigDecimal porcentaje) {
-        if (porcentaje == null || porcentaje.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+    public int aumentarPrecios(Long categoriaId, BigDecimal porcentaje) {
+        if (porcentaje == null || porcentaje.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El porcentaje debe ser mayor a 0.");
         }
-        return articuloRepository.aumentarPrecios(categoriaId, porcentaje);
+
+        BigDecimal factor = BigDecimal.ONE.add(
+                porcentaje.divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP));
+
+        List<Articulo> articulos = articuloRepository.findActivosParaAumento(categoriaId);
+        for (Articulo art : articulos) {
+            art.setPrecio(art.getPrecio().multiply(factor).setScale(2, RoundingMode.HALF_UP));
+        }
+        articuloRepository.saveAll(articulos);
+        return articulos.size();
     }
 }

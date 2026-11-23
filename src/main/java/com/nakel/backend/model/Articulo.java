@@ -47,8 +47,8 @@ public class Articulo {
     @Column(nullable = false)
     private Integer stockMinimo = 8;
 
-    // 🔥 NUEVO: Bandera para el Borrado Lógico (Soft Delete)
-    @Column(nullable = false)
+    // Por esto (le agregamos la instrucción SQL por defecto):
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private boolean activo = true;
 }
 

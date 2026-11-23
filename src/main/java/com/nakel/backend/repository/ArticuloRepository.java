@@ -105,16 +105,33 @@ public interface ArticuloRepository extends JpaRepository<Articulo, Long> {
             Pageable pageable
     );
 
-    // 🔥 Aumento masivo de precios (Solo impacta a los artículos activos)
-    @Modifying
-    @Transactional
+    // Artículos ACTIVOS a los que se les aplica el aumento masivo
+    // (la cuenta se hace en Java con BigDecimal; en SQL la división entera daba 0)
     @Query("""
-UPDATE Articulo a
-SET a.precio = a.precio * (1 + :porcentaje / 100)
-WHERE a.activo = true AND (:categoriaId IS NULL OR a.categoria.id = :categoriaId)
-""")
-    int aumentarPrecios(
-            @Param("categoriaId") Long categoriaId,
-            @Param("porcentaje") BigDecimal porcentaje
-    );
+        SELECT a
+        FROM Articulo a
+        WHERE a.activo = true AND (:categoriaId IS NULL OR a.categoria.id = :categoriaId)
+        """)
+    List<Articulo> findActivosParaAumento(@Param("categoriaId") Long categoriaId);
+
+    // Busca por código SIN filtrar por activo: el código es único en la base
+    // aunque el artículo esté dado de baja.
+    Optional<Articulo> findFirstByCodigo(String codigo);
+
+    // Último artículo de la categoría contando también los dados de baja,
+    // para que el SKU siguiente no repita el código de uno borrado.
+    @Query("""
+        SELECT a
+        FROM Articulo a
+        WHERE a.categoria.id = :categoriaId
+        ORDER BY a.id DESC
+        """)
+    List<Articulo> findUltimoPorCategoriaIncluyendoBajas(@Param("categoriaId") Long categoriaId);
+
+    // Para impedir borrar categorías o materiales que estén en uso
+    @Query("SELECT COUNT(a) FROM Articulo a WHERE a.activo = true AND a.categoria.id = :categoriaId")
+    long contarActivosPorCategoria(@Param("categoriaId") Long categoriaId);
+
+    @Query("SELECT COUNT(a) FROM Articulo a WHERE a.activo = true AND a.material.id = :materialId")
+    long contarActivosPorMaterial(@Param("materialId") Long materialId);
 }

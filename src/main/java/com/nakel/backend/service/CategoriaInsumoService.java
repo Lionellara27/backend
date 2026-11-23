@@ -11,9 +11,12 @@ import java.util.List;
 public class CategoriaInsumoService {
 
     private final CategoriaInsumoRepository categoriaRepository;
+    private final com.nakel.backend.repository.InsumoRepository insumoRepository;
 
-    public CategoriaInsumoService(CategoriaInsumoRepository categoriaRepository) {
+    public CategoriaInsumoService(CategoriaInsumoRepository categoriaRepository,
+                                  com.nakel.backend.repository.InsumoRepository insumoRepository) {
         this.categoriaRepository = categoriaRepository;
+        this.insumoRepository = insumoRepository;
     }
 
     // 🟢 OBTENER TODAS (Ideal para llenar tu ComboBox)
@@ -41,6 +44,10 @@ public class CategoriaInsumoService {
     public void eliminarCategoria(Long id) {
         if (!categoriaRepository.existsById(id)) {
             throw new RuntimeException("La categoría no existe.");
+        }
+        long enUso = insumoRepository.countByCategoriaId(id);
+        if (enUso > 0) {
+            throw new RuntimeException("No se puede eliminar: hay " + enUso + " insumo(s) que usan esta categoría.");
         }
         categoriaRepository.deleteById(id);
     }

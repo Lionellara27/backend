@@ -22,9 +22,10 @@ public class CambioController {
 
     // 🔥 Guarda un nuevo registro de cambio asociado a una venta específica
     @PostMapping("/venta/{idVenta}")
-    public ResponseEntity<?> registrarCambio(@PathVariable Long idVenta, @RequestBody Cambio cambio) {
+    public ResponseEntity<?> registrarCambio(@PathVariable Long idVenta, @RequestBody Cambio cambio,
+                                             @RequestParam(required = false) String username) {
         try {
-            Cambio nuevoCambio = cambioService.registrarCambio(idVenta, cambio);
+            Cambio nuevoCambio = cambioService.registrarCambio(idVenta, cambio, username);
             return ResponseEntity.ok(nuevoCambio);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

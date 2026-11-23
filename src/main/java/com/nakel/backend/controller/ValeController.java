@@ -43,9 +43,10 @@ public class ValeController {
 
     // 🔥 3. Este queda IGUAL
     @PutMapping("/consumir/{codigo}")
-    public ResponseEntity<?> consumirVale(@PathVariable String codigo) {
+    public ResponseEntity<?> consumirVale(@PathVariable String codigo,
+                                          @RequestParam(required = false) BigDecimal montoUsado) {
         try {
-            Vale vale = valeService.consumirVale(codigo);
+            Vale vale = valeService.consumirVale(codigo, montoUsado);
             return ResponseEntity.ok(vale);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

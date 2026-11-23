@@ -5,6 +5,7 @@ import com.nakel.backend.service.ArticuloService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import com.nakel.backend.service.ReportePdfService; // nuevo service
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,10 +18,12 @@ import java.util.List;
 public class ArticuloController {
 
     private final ArticuloService articuloService;
+    private final ReportePdfService reportePdfService;
 
     // Spring Boot inyecta el servicio automáticamente
-    public ArticuloController(ArticuloService articuloService) {
+    public ArticuloController(ArticuloService articuloService, ReportePdfService reportePdfService) {
         this.articuloService = articuloService;
+        this.reportePdfService = reportePdfService; // 🔥 LO INICIALIZAMOS ACÁ
     }
 
     // 📋 GET: Obtener todos los artículos (Con soporte para Mostrador y Catálogo)
@@ -61,21 +64,29 @@ public class ArticuloController {
 
     // 💾 POST: Guardar nuevo artículo
     @PostMapping
-    public Articulo guardarArticulo(@RequestBody Articulo articulo) {
-        return articuloService.guardarArticulo(articulo);
+    public ResponseEntity<?> guardarArticulo(@RequestBody Articulo articulo) {
+        try {
+            return ResponseEntity.ok(articuloService.guardarArticulo(articulo));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("No se pudo guardar el artículo. Revisá los datos cargados.");
+        }
     }
 
     // 🔄 PUT: Actualizar/Editar artículo existente
     @PutMapping("/{id}")
-    public ResponseEntity<Articulo> actualizarArticulo(@PathVariable Long id, @RequestBody Articulo articuloDetalles) {
+    public ResponseEntity<?> actualizarArticulo(@PathVariable Long id, @RequestBody Articulo articuloDetalles) {
         try {
             Articulo actualizado = articuloService.actualizarArticulo(id, articuloDetalles);
             if (actualizado != null) {
                 return ResponseEntity.ok(actualizado);
             }
             return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body("No se pudo actualizar el artículo. Revisá los datos cargados.");
         }
     }
 
@@ -147,6 +158,17 @@ public class ArticuloController {
             return ResponseEntity.badRequest()
                     .body("Error al aumentar precios: " + e.getMessage());
         }
+    }
+    // 🖨️ NUEVO: Descargar Reporte de Stock en PDF
+    @GetMapping("/reporte-stock")
+    public ResponseEntity<byte[]> descargarReporteStock() {
+        byte[] pdf = reportePdfService.generarReporteStock();
+
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "Reporte_Stock_Nakel.pdf");
+
+        return new ResponseEntity<>(pdf, headers, org.springframework.http.HttpStatus.OK);
     }
 }
 ///

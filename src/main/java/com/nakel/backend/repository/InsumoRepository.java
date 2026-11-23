@@ -20,4 +20,9 @@ public interface InsumoRepository extends JpaRepository<Insumo, Long> {
     @EntityGraph(attributePaths = {"categoria"})
     Page<Insumo> findByNombreContainingIgnoreCase(String nombre, Pageable pageable);
 
+    // Para impedir borrar materiales o categorías de insumo que estén en uso
+    long countByMaterialId(Long materialId);
+
+    long countByCategoriaId(Long categoriaId);
+
 }

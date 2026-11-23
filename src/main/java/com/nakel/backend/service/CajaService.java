@@ -31,13 +31,32 @@ public class CajaService {
     @Autowired
     private MovimientoCajaService movimientoCajaService;
 
+    /**
+     * Busca el usuario que opera la caja. NUNCA devuelve null mientras exista algún usuario:
+     * si el nombre que manda la pantalla no existe (por ejemplo porque se cambió el usuario
+     * en Seguridad y la sesión quedó con el nombre viejo), usa "admin" y, si tampoco está,
+     * el primer usuario del sistema. Antes devolvía null y eso hacía fallar todas las ventas.
+     */
+    private Usuario resolverUsuario(String username) {
+        Optional<Usuario> usuario = (username == null || username.isBlank())
+                ? Optional.empty()
+                : usuarioRepository.findByNombreUsuario(username.trim());
+
+        if (usuario.isEmpty()) {
+            usuario = usuarioRepository.findByNombreUsuario("admin");
+        }
+        if (usuario.isEmpty()) {
+            usuario = usuarioRepository.findAll().stream().findFirst();
+        }
+        return usuario.orElseThrow(() -> new IllegalStateException("No hay ningún usuario cargado en el sistema."));
+    }
+
     // 🟢 1. Obtener la caja activa del día, reabrirla si se cerró temporalmente, o crear nueva si cambió el día
     public synchronized CajaDiaria obtenerOCrearCajaActual(String username) {
         LocalDate hoy = LocalDate.now();
 
         // Buscamos al usuario que está operando
-        Usuario usuario = usuarioRepository.findByNombreUsuario(username)
-                .orElseGet(() -> usuarioRepository.findByNombreUsuario("admin").orElse(null));
+        Usuario usuario = resolverUsuario(username);
 
         // Traemos todas las cajas para buscar exactamente la fecha de hoy
         List<CajaDiaria> todasLasCajas = cajaRepository.findAllByOrderByFechaAperturaDesc();
@@ -73,24 +92,17 @@ public class CajaService {
         // =========================================================
         // 📍 CASO B: NO HAY CAJA DE HOY. ¿QUEDÓ ALGUNA DE AYER ABIERTA?
         // =========================================================
-        Optional<CajaDiaria> viejaAbierta = todasLasCajas.stream()
-                .filter(c -> "ABIERTA".equalsIgnoreCase(c.getEstado()))
-                .findFirst();
+        for (CajaDiaria cajaVieja : todasLasCajas) {
+            if (!"ABIERTA".equalsIgnoreCase(cajaVieja.getEstado())) continue;
 
-        if (viejaAbierta.isPresent()) {
-            CajaDiaria cajaVieja = viejaAbierta.get();
             cajaVieja.setEstado("CERRADA");
             cajaVieja.setFechaCierre(LocalDateTime.now());
             cajaVieja.setObservaciones("Cierre automático por cambio de día.");
 
-            BigDecimal saldoFinal = cajaVieja.getSaldoInicial()
-                    .add(cajaVieja.getTotalVentas())
-                    .subtract(cajaVieja.getTotalEgresos());
-
+            BigDecimal saldoFinal = calcularSaldoFinal(cajaVieja);
             cajaVieja.setSaldoFinal(saldoFinal);
             cajaRepository.save(cajaVieja);
 
-            // 🔥 ACÁ ESTÁ EL ARREGLO CORRECTO (usuario en vez de null)
             movimientoCajaService.registrarMovimiento(
                     cajaVieja, usuario, TipoMovimientoCaja.CIERRE_CAJA,
                     "Cierre Automático", "El sistema cerró la caja del día anterior", null, saldoFinal
@@ -118,23 +130,25 @@ public class CajaService {
         return cajaGuardada;
     }
 
+    // Saldo Final = Saldo Inicial + Ventas - Egresos
+    private BigDecimal calcularSaldoFinal(CajaDiaria caja) {
+        return caja.getSaldoInicial()
+                .add(caja.getTotalVentas())
+                .subtract(caja.getTotalEgresos());
+    }
+
     // 🔴 2. Cerrar la caja activa
-    public CajaDiaria cerrarCajaActual(String username) throws Exception {
+    public synchronized CajaDiaria cerrarCajaActual(String username) throws Exception {
         CajaDiaria caja = cajaRepository.findFirstByEstadoOrderByFechaAperturaDesc("ABIERTA")
                 .orElseThrow(() -> new Exception("No hay ninguna caja abierta para cerrar."));
 
-        Usuario usuario = usuarioRepository.findByNombreUsuario(username)
-                .orElseGet(() -> usuarioRepository.findByNombreUsuario("admin").orElse(null));
+        Usuario usuario = resolverUsuario(username);
 
         caja.setFechaCierre(LocalDateTime.now());
         caja.setEstado("CERRADA");
         caja.setUsuarioCierre(usuario);
 
-        // Saldo Final = Saldo Inicial + Ventas - Egresos
-        BigDecimal saldoFinalCalculado = caja.getSaldoInicial()
-                .add(caja.getTotalVentas())
-                .subtract(caja.getTotalEgresos());
-
+        BigDecimal saldoFinalCalculado = calcularSaldoFinal(caja);
         caja.setSaldoFinal(saldoFinalCalculado);
 
         CajaDiaria cajaCerrada = cajaRepository.save(caja);
@@ -146,84 +160,93 @@ public class CajaService {
         return cajaCerrada;
     }
 
-    // 🔥 3. CIRUGÍA APLICADA: Traer el Historial PAGINADO (y con solo lectura para ahorrar RAM)
+    // 🔥 3. Historial PAGINADO (solo lectura)
     @Transactional(readOnly = true)
     public Page<CajaDiaria> obtenerHistorialPaginado(Pageable pageable) {
         return cajaRepository.findAll(pageable);
     }
 
-    // 💵 4. Acumular Venta en la Caja Activa (🔥 SOPORTA MULTI-PAGOS Y TARJETAS)
-    public void acumularVentaEnCajaActual(Venta venta, String username) {
-        try {
-            CajaDiaria caja = obtenerOCrearCajaActual(username);
+    // Suma un pago al rubro que corresponde según el medio de pago
+    private void sumarAlRubro(CajaDiaria caja, String medio, BigDecimal monto) {
+        if (medio == null || monto == null) return;
 
-            Usuario usuario = usuarioRepository.findByNombreUsuario(username)
-                    .orElseGet(() -> usuarioRepository.findByNombreUsuario("admin").orElse(null));
-
-            BigDecimal totalVenta = venta.getTotal();
-
-            // Sumar cantidad de ventas y total vendido
-            caja.setCantidadVentas(caja.getCantidadVentas() + 1);
-            caja.setTotalVentas(caja.getTotalVentas().add(totalVenta));
-
-            // 🔥 Recorremos todos los pagos individuales de la venta (Soporta Pago Mixto)
-            if (venta.getPagos() != null) {
-                for (Pago pago : venta.getPagos()) {
-                    BigDecimal montoPago = pago.getMonto();
-                    String medio = pago.getMetodoPago();
-
-                    if (medio.equalsIgnoreCase("Efectivo")) {
-                        caja.setTotalEfectivo(caja.getTotalEfectivo().add(montoPago));
-                    } else if (medio.equalsIgnoreCase("MercadoPago") || medio.equalsIgnoreCase("Mercado Pago")) {
-                        caja.setTotalMercadoPago(caja.getTotalMercadoPago().add(montoPago));
-                    } else if (medio.equalsIgnoreCase("Transferencia")) {
-                        caja.setTotalTransferencias(caja.getTotalTransferencias().add(montoPago));
-                    } else if (medio.equalsIgnoreCase("Tarjeta de Débito") || medio.equalsIgnoreCase("Tarjeta Debito")) {
-                        caja.setTotalTarjetaDebito(caja.getTotalTarjetaDebito().add(montoPago));
-                    } else if (medio.equalsIgnoreCase("Tarjeta de Crédito") || medio.equalsIgnoreCase("Tarjeta Credito")) {
-                        caja.setTotalTarjetaCredito(caja.getTotalTarjetaCredito().add(montoPago));
-                    }
-                }
-            }
-
-            // Recalcular Saldo Final
-            caja.setSaldoFinal(caja.getSaldoInicial().add(caja.getTotalVentas()).subtract(caja.getTotalEgresos()));
-
-            cajaRepository.save(caja);
-
-            String descripcionPago = "Mixto / Varios";
-            if (venta.getPagos() != null && venta.getPagos().size() == 1) {
-                descripcionPago = venta.getPagos().get(0).getMetodoPago();
-            }
-
-            movimientoCajaService.registrarMovimiento(
-                    caja, usuario, TipoMovimientoCaja.VENTA, "Venta realizada", "Cobro de ticket", descripcionPago, totalVenta
-            );
-
-        } catch (Exception e) {
-            System.out.println("❌ Error al acumular venta en caja: " + e.getMessage());
+        if (medio.equalsIgnoreCase("Efectivo")) {
+            caja.setTotalEfectivo(caja.getTotalEfectivo().add(monto));
+        } else if (medio.equalsIgnoreCase("MercadoPago") || medio.equalsIgnoreCase("Mercado Pago")) {
+            caja.setTotalMercadoPago(caja.getTotalMercadoPago().add(monto));
+        } else if (medio.equalsIgnoreCase("Transferencia")) {
+            caja.setTotalTransferencias(caja.getTotalTransferencias().add(monto));
+        } else if (medio.equalsIgnoreCase("Tarjeta de Débito") || medio.equalsIgnoreCase("Tarjeta Debito")) {
+            caja.setTotalTarjetaDebito(caja.getTotalTarjetaDebito().add(monto));
+        } else if (medio.equalsIgnoreCase("Tarjeta de Crédito") || medio.equalsIgnoreCase("Tarjeta Credito")) {
+            caja.setTotalTarjetaCredito(caja.getTotalTarjetaCredito().add(monto));
         }
+    }
+
+    // 💵 4. Acumular Venta en la Caja Activa (🔥 SOPORTA MULTI-PAGOS Y TARJETAS)
+    // Si algo falla acá, la excepción sube y la venta entera se deshace: preferimos avisar
+    // a que quede una venta cobrada que no figura en la caja.
+    public void acumularVentaEnCajaActual(Venta venta, String username) {
+        CajaDiaria caja = obtenerOCrearCajaActual(username);
+        Usuario usuario = resolverUsuario(username);
+
+        BigDecimal totalVenta = venta.getTotal();
+
+        // Sumar cantidad de ventas y total vendido
+        caja.setCantidadVentas(caja.getCantidadVentas() + 1);
+        caja.setTotalVentas(caja.getTotalVentas().add(totalVenta));
+
+        // 🔥 Recorremos todos los pagos individuales de la venta (Soporta Pago Mixto)
+        if (venta.getPagos() != null) {
+            for (Pago pago : venta.getPagos()) {
+                sumarAlRubro(caja, pago.getMetodoPago(), pago.getMonto());
+            }
+        }
+
+        caja.setSaldoFinal(calcularSaldoFinal(caja));
+        cajaRepository.save(caja);
+
+        String descripcionPago = "Mixto / Varios";
+        if (venta.getPagos() != null && venta.getPagos().size() == 1) {
+            descripcionPago = venta.getPagos().get(0).getMetodoPago();
+        }
+
+        movimientoCajaService.registrarMovimiento(
+                caja, usuario, TipoMovimientoCaja.VENTA, "Venta realizada",
+                "Cobro de ticket #" + venta.getId(), descripcionPago, totalVenta
+        );
+    }
+
+    // 🔁 4.1 Diferencia cobrada en un CAMBIO: antes no entraba a la caja en ningún lado.
+    public void registrarIngresoPorCambio(Long idVenta, String medioPago, BigDecimal monto, String username) {
+        if (monto == null || monto.signum() <= 0) return;
+
+        CajaDiaria caja = obtenerOCrearCajaActual(username);
+        Usuario usuario = resolverUsuario(username);
+
+        caja.setTotalVentas(caja.getTotalVentas().add(monto));
+        sumarAlRubro(caja, medioPago, monto);
+        caja.setSaldoFinal(calcularSaldoFinal(caja));
+        cajaRepository.save(caja);
+
+        movimientoCajaService.registrarMovimiento(
+                caja, usuario, TipoMovimientoCaja.INGRESO, "Diferencia por cambio",
+                "Cambio sobre la venta #" + idVenta, medioPago, monto
+        );
     }
 
     // 💸 5. Registrar Retiro / Egreso de Dinero
     public void registrarEgreso(BigDecimal monto, String concepto, String descripcion, String username) {
-        try {
-            CajaDiaria caja = obtenerOCrearCajaActual(username);
+        CajaDiaria caja = obtenerOCrearCajaActual(username);
+        Usuario usuario = resolverUsuario(username);
 
-            Usuario usuario = usuarioRepository.findByNombreUsuario(username)
-                    .orElseGet(() -> usuarioRepository.findByNombreUsuario("admin").orElse(null));
+        caja.setTotalEgresos(caja.getTotalEgresos().add(monto));
+        caja.setSaldoFinal(calcularSaldoFinal(caja));
 
-            caja.setTotalEgresos(caja.getTotalEgresos().add(monto));
-            caja.setSaldoFinal(caja.getSaldoInicial().add(caja.getTotalVentas()).subtract(caja.getTotalEgresos()));
+        cajaRepository.save(caja);
 
-            cajaRepository.save(caja);
-
-            movimientoCajaService.registrarMovimiento(
-                    caja, usuario, TipoMovimientoCaja.EGRESO, concepto, descripcion, "Efectivo", monto
-            );
-
-        } catch (Exception e) {
-            System.out.println("❌ Error al registrar egreso de caja: " + e.getMessage());
-        }
+        movimientoCajaService.registrarMovimiento(
+                caja, usuario, TipoMovimientoCaja.EGRESO, concepto, descripcion, "Efectivo", monto
+        );
     }
 }
