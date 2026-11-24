@@ -31,6 +31,8 @@ public class UsuarioService {
     }
 
     // Actualizar Credenciales desde Configuración
+    // Todo o nada: si algo falla o se corta a mitad de camino, la base deshace lo que se alcanzó a guardar.
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void actualizarCredenciales(String usernameActual, String nuevoUsuario, String nuevaContraseña) throws Exception {
         // Buscamos al usuario (asumimos que operamos sobre el primer usuario o el admin actual)
         Usuario usuario = usuarioRepository.findAll().stream().findFirst()

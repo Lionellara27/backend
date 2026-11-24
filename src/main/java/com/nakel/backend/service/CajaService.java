@@ -52,6 +52,8 @@ public class CajaService {
     }
 
     // 🟢 1. Obtener la caja activa del día, reabrirla si se cerró temporalmente, o crear nueva si cambió el día
+    // Todo o nada: si algo falla o se corta a mitad de camino, la base deshace lo que se alcanzó a guardar.
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public synchronized CajaDiaria obtenerOCrearCajaActual(String username) {
         LocalDate hoy = LocalDate.now();
 
@@ -135,6 +137,8 @@ public class CajaService {
     }
 
     // 🔴 2. Cerrar la caja activa
+    // Todo o nada: si algo falla o se corta a mitad de camino, la base deshace lo que se alcanzó a guardar.
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public synchronized CajaDiaria cerrarCajaActual(String username) throws Exception {
         CajaDiaria caja = cajaRepository.findFirstByEstadoOrderByFechaAperturaDesc("ABIERTA")
                 .orElseThrow(() -> new Exception("No hay ninguna caja abierta para cerrar."));
@@ -183,6 +187,8 @@ public class CajaService {
     // 💵 4. Acumular Venta en la Caja Activa (🔥 SOPORTA MULTI-PAGOS Y TARJETAS)
     // Si algo falla acá, la excepción sube y la venta entera se deshace: preferimos avisar
     // a que quede una venta cobrada que no figura en la caja.
+    // Todo o nada: si algo falla o se corta a mitad de camino, la base deshace lo que se alcanzó a guardar.
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void acumularVentaEnCajaActual(Venta venta, String username) {
         CajaDiaria caja = obtenerOCrearCajaActual(username);
         Usuario usuario = resolverUsuario(username);
@@ -279,6 +285,8 @@ public class CajaService {
     }
 
     // 🔁 4.1 Diferencia cobrada en un CAMBIO: antes no entraba a la caja en ningún lado.
+    // Todo o nada: si algo falla o se corta a mitad de camino, la base deshace lo que se alcanzó a guardar.
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void registrarIngresoPorCambio(Long idVenta, String medioPago, BigDecimal monto, String username) {
         if (monto == null || monto.signum() <= 0) return;
 
@@ -297,6 +305,8 @@ public class CajaService {
     }
 
     // 💸 5. Registrar Retiro / Egreso de Dinero
+    // Todo o nada: si algo falla o se corta a mitad de camino, la base deshace lo que se alcanzó a guardar.
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void registrarEgreso(BigDecimal monto, String concepto, String descripcion, String username) {
         CajaDiaria caja = obtenerOCrearCajaActual(username);
         Usuario usuario = resolverUsuario(username);

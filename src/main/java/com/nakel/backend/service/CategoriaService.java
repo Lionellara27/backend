@@ -19,6 +19,8 @@ public class CategoriaService {
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<Categoria> obtenerTodas() { return repository.findAll(); }
 
+    // Todo o nada: si algo falla o se corta a mitad de camino, la base deshace lo que se alcanzó a guardar.
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public Categoria guardarCategoria(Categoria cat) {
         if (cat.getNombre() == null || cat.getNombre().isBlank()) {
             throw new RuntimeException("El nombre de la categoría es obligatorio.");
@@ -38,6 +40,8 @@ public class CategoriaService {
 
     // SQLite no hace cumplir las claves foráneas: lo controlamos a mano para que
     // ningún artículo quede apuntando a una categoría que ya no existe.
+    // Todo o nada: si algo falla o se corta a mitad de camino, la base deshace lo que se alcanzó a guardar.
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void eliminarCategoria(Long id) {
         long enUso = articuloRepository.contarActivosPorCategoria(id);
         if (enUso > 0) {

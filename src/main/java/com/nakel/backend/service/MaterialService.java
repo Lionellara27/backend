@@ -23,6 +23,8 @@ public class MaterialService {
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<Material> obtenerTodos() { return repository.findAll(); }
 
+    // Todo o nada: si algo falla o se corta a mitad de camino, la base deshace lo que se alcanzó a guardar.
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public Material guardar(Material material) {
         if (material.getNombre() == null || material.getNombre().isBlank()) {
             throw new RuntimeException("El nombre del material es obligatorio.");
@@ -38,6 +40,8 @@ public class MaterialService {
     }
 
     // SQLite no hace cumplir las claves foráneas: lo controlamos a mano.
+    // Todo o nada: si algo falla o se corta a mitad de camino, la base deshace lo que se alcanzó a guardar.
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void eliminar(Long id) {
         long articulos = articuloRepository.contarActivosPorMaterial(id);
         long insumos = insumoRepository.countByMaterialId(id);
