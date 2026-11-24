@@ -21,11 +21,6 @@ public class ArticuloService {
         this.articuloRepository = articuloRepository;
     }
 
-    // 🔥 Apagamos el rastreo de memoria RAM y usamos la consulta de 1 solo viaje
-    @Transactional(readOnly = true)
-    public List<Articulo> obtenerTodos() {
-        return articuloRepository.findAllOptimizado();
-    }
 
     // 🔥 BÚSQUEDA + FILTROS + PAGINACIÓN REAL
     @Transactional(readOnly = true)

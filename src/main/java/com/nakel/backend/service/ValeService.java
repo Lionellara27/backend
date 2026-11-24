@@ -73,6 +73,16 @@ public class ValeService {
 
     // Saldo a favor de un cliente = suma de sus vales vigentes
     @Transactional(readOnly = true)
+    public java.util.Map<Long, BigDecimal> saldosAFavorDe(java.util.Collection<Long> idsClientes) {
+        java.util.Map<Long, BigDecimal> saldos = new java.util.HashMap<>();
+        if (idsClientes == null || idsClientes.isEmpty()) return saldos;
+        for (Object[] fila : valeRepository.sumarVigentesDeClientes(idsClientes, LocalDateTime.now())) {
+            saldos.put((Long) fila[0], fila[1] instanceof BigDecimal b ? b : new BigDecimal(String.valueOf(fila[1])));
+        }
+        return saldos;
+    }
+
+    @Transactional(readOnly = true)
     public BigDecimal saldoAFavorDe(Long idCliente) {
         if (idCliente == null) return BigDecimal.ZERO;
         BigDecimal suma = valeRepository.sumarVigentesDeCliente(idCliente, LocalDateTime.now());

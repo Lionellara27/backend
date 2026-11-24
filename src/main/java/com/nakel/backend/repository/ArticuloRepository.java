@@ -128,6 +128,14 @@ public interface ArticuloRepository extends JpaRepository<Articulo, Long> {
         """)
     List<Articulo> findUltimoPorCategoriaIncluyendoBajas(@Param("categoriaId") Long categoriaId);
 
+    // Solo los CÓDIGOS de una categoría, del más nuevo al más viejo (para sugerir el próximo SKU sin cargar los artículos)
+    @Query("SELECT a.codigo FROM Articulo a WHERE a.categoria.id = :categoriaId ORDER BY a.id DESC")
+    List<String> findCodigosDeCategoria(@Param("categoriaId") Long categoriaId);
+
+    // Todos los códigos que empiezan igual, estén activos o dados de baja
+    @Query("SELECT a.codigo FROM Articulo a WHERE a.codigo LIKE CONCAT(:prefijo, '%')")
+    List<String> findCodigosQueEmpiezanCon(@Param("prefijo") String prefijo);
+
     // Para impedir borrar categorías o materiales que estén en uso
     @Query("SELECT COUNT(a) FROM Articulo a WHERE a.activo = true AND a.categoria.id = :categoriaId")
     long contarActivosPorCategoria(@Param("categoriaId") Long categoriaId);

@@ -20,6 +20,7 @@ public class MaterialService {
         this.insumoRepository = insumoRepository;
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<Material> obtenerTodos() { return repository.findAll(); }
 
     public Material guardar(Material material) {

@@ -104,6 +104,7 @@ public class ProduccionService {
     }
 
     // 🔍 MÉTODO BLINDADO PARA BUSCAR EL SKU CORRECTO RESPETANDO PARÁMETROS
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public String obtenerSiguienteSku(Long idCategoria) {
         // 1. Buscamos la categoría real en la BD para sacar su prefijo configurado (ej: "1111" o "2222")
         Categoria categoria = categoriaRepository.findById(idCategoria).orElse(null);
@@ -114,7 +115,8 @@ public class ProduccionService {
 
         // 2. Buscamos el último artículo de la categoría, CONTANDO los dados de baja:
         //    su código sigue ocupado en la base, así que no se puede volver a entregar.
-        java.util.List<Articulo> ultimos = articuloRepository.findUltimoPorCategoriaIncluyendoBajas(idCategoria);
+        //    Se piden solo los códigos (texto), no los artículos enteros.
+        java.util.List<String> ultimos = articuloRepository.findCodigosDeCategoria(idCategoria);
 
         String partePrefijo = prefijoReal + "-";
 
@@ -122,8 +124,7 @@ public class ProduccionService {
         //    (por si los códigos de la categoría se escribieron distinto al prefijo configurado).
         //    Los renombrados "-BAJA-" se saltean solos.
         if (ultimos != null) {
-            for (Articulo art : ultimos) {
-                String sku = art.getCodigo();
+            for (String sku : ultimos) {
                 if (sku == null || sku.length() < 4 || sku.contains("-BAJA-")) continue;
                 String ultimosCuatro = sku.substring(sku.length() - 4);
                 if (ultimosCuatro.matches("\\d{4}")) {
@@ -137,10 +138,13 @@ public class ProduccionService {
         //    con 0001 y 0010-0014 cargados sugiere 0002; con todo lleno hasta 0014, 0015.
         //    (Antes seguía desde el último cargado y los huecos no se usaban nunca.)
         //    Un código cuenta como ocupado aunque el artículo esté dado de baja.
+        //    Los códigos ocupados se traen en UNA consulta y se revisan en memoria. Antes se le preguntaba
+        //    a la base número por número: con 300 artículos en la categoría eran 300 consultas.
+        java.util.Set<String> ocupados = new java.util.HashSet<>(articuloRepository.findCodigosQueEmpiezanCon(partePrefijo));
         int siguienteNum = 1;
         String candidato = partePrefijo + String.format("%04d", siguienteNum);
         int intentos = 0;
-        while (articuloRepository.findFirstByCodigo(candidato).isPresent() && intentos < 10000) {
+        while (ocupados.contains(candidato) && intentos < 10000) {
             siguienteNum++;
             intentos++;
             candidato = partePrefijo + String.format("%04d", siguienteNum);

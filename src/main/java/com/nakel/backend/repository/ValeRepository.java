@@ -27,6 +27,15 @@ public interface ValeRepository extends JpaRepository<Vale, Long> {
         """)
     BigDecimal sumarVigentesDeCliente(@Param("idCliente") Long idCliente, @Param("ahora") LocalDateTime ahora);
 
+    // Lo mismo para varios clientes a la vez (una página de la agenda): devuelve pares [idCliente, suma]
+    @Query("""
+        SELECT v.idCliente, SUM(v.monto)
+        FROM Vale v
+        WHERE v.idCliente IN :ids AND v.estado = 'ACTIVO' AND v.fechaVencimiento > :ahora
+        GROUP BY v.idCliente
+        """)
+    java.util.List<Object[]> sumarVigentesDeClientes(@Param("ids") java.util.Collection<Long> ids, @Param("ahora") LocalDateTime ahora);
+
     // Los vales vigentes de un cliente, uno por uno (para mostrar de dónde sale su saldo a favor)
     java.util.List<Vale> findByIdClienteAndEstadoAndFechaVencimientoAfterOrderByFechaEmisionAsc(
             Long idCliente, String estado, LocalDateTime ahora);

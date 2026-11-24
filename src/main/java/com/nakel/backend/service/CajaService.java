@@ -58,12 +58,10 @@ public class CajaService {
         // Buscamos al usuario que está operando
         Usuario usuario = resolverUsuario(username);
 
-        // Traemos todas las cajas para buscar exactamente la fecha de hoy
-        List<CajaDiaria> todasLasCajas = cajaRepository.findAllByOrderByFechaAperturaDesc();
-
-        Optional<CajaDiaria> cajaDeHoyOpt = todasLasCajas.stream()
-                .filter(c -> c.getFecha() != null && c.getFecha().equals(hoy))
-                .findFirst();
+        // Se le pide a la base SOLO la caja de hoy. Antes se traían todas las cajas de la historia
+        // (una por cada día trabajado) y se buscaba entre ellas, y eso pasaba en cada venta:
+        // con los años, cada cobro iba a cargar miles de cajas en memoria.
+        Optional<CajaDiaria> cajaDeHoyOpt = cajaRepository.findFirstByFechaBetweenOrderByFechaAperturaDesc(hoy, hoy);
 
         // =========================================================
         // 📍 CASO A: LA CAJA DE HOY YA EXISTE EN LA BASE DE DATOS
@@ -92,8 +90,7 @@ public class CajaService {
         // =========================================================
         // 📍 CASO B: NO HAY CAJA DE HOY. ¿QUEDÓ ALGUNA DE AYER ABIERTA?
         // =========================================================
-        for (CajaDiaria cajaVieja : todasLasCajas) {
-            if (!"ABIERTA".equalsIgnoreCase(cajaVieja.getEstado())) continue;
+        for (CajaDiaria cajaVieja : cajaRepository.findByEstadoIgnoreCase("ABIERTA")) {
 
             cajaVieja.setEstado("CERRADA");
             cajaVieja.setFechaCierre(LocalDateTime.now());

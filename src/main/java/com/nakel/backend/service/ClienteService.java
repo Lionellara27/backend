@@ -38,8 +38,11 @@ public class ClienteService {
         return cliente;
     }
 
+    // Para una página entera se piden todos los saldos en UNA consulta (antes era una por cliente)
     private Page<Cliente> conSaldoReal(Page<Cliente> pagina) {
-        pagina.forEach(this::conSaldoReal);
+        java.util.List<Long> ids = pagina.getContent().stream().map(Cliente::getId).filter(java.util.Objects::nonNull).toList();
+        java.util.Map<Long, java.math.BigDecimal> saldos = valeService.saldosAFavorDe(ids);
+        pagina.forEach(c -> c.setSaldoAFavor(saldos.getOrDefault(c.getId(), java.math.BigDecimal.ZERO)));
         return pagina;
     }
 

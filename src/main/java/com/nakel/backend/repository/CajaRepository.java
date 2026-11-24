@@ -15,8 +15,11 @@ public interface CajaRepository extends JpaRepository<CajaDiaria, Long> {
     // Busca la caja abierta activa si existe
     Optional<CajaDiaria> findFirstByEstadoOrderByFechaAperturaDesc(String estado);
 
-    // Trae todas las cajas ordenadas por fecha reciente (para el historial)
-    List<CajaDiaria> findAllByOrderByFechaAperturaDesc();
+    // La caja de un día puntual (se usa para encontrar la de hoy sin traer todas las demás)
+    Optional<CajaDiaria> findFirstByFechaBetweenOrderByFechaAperturaDesc(LocalDate desde, LocalDate hasta);
+
+    // Solo las que quedaron abiertas (normalmente ninguna o una)
+    List<CajaDiaria> findByEstadoIgnoreCase(String estado);
 
     Optional<CajaDiaria> findFirstByOrderByFechaAperturaDesc();
 

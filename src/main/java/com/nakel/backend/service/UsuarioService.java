@@ -23,6 +23,7 @@ public class UsuarioService {
     }
 
     // Validar Credenciales para el Login
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public boolean validarLogin(String username, String password) {
         return usuarioRepository.findByNombreUsuario(username)
                 .map(usuario -> usuario.getContraseña().equals(password))

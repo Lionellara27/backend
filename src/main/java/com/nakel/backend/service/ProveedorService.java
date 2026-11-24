@@ -27,6 +27,7 @@ public class ProveedorService {
     }
 
     // 🔍 Busca un proveedor específico (Lo usa el PUT para actualizar)
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public Optional<Proveedor> obtenerPorId(Long id) {
         return repository.findById(id);
     }
@@ -54,6 +55,7 @@ public class ProveedorService {
     }
 
     // 🔍 Endpoint para verificar CUIT (Llamado por el Controller)
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public Optional<Proveedor> buscarPorCuit(String cuit) {
         return repository.findByCuit(cuit);
     }

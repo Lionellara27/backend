@@ -44,7 +44,18 @@ public class ValeController {
             @PageableDefault(size = 20) Pageable pageable) {
 
         LocalDateTime ahora = LocalDateTime.now();
-        return valeService.listar(soloVigentes, pageable).map(vale -> {
+        Page<com.nakel.backend.model.Vale> pagina = valeService.listar(soloVigentes, pageable);
+
+        // Los nombres de los clientes de esta página se piden TODOS JUNTOS en una consulta.
+        // (Antes se buscaba el cliente de cada vale por separado: una consulta por renglón.)
+        java.util.Set<Long> idsClientes = new java.util.HashSet<>();
+        pagina.forEach(v -> { if (v.getIdCliente() != null) idsClientes.add(v.getIdCliente()); });
+        Map<Long, String> nombres = new java.util.HashMap<>();
+        if (!idsClientes.isEmpty()) {
+            clienteRepository.findAllById(idsClientes).forEach(c -> nombres.put(c.getId(), c.getNombre()));
+        }
+
+        return pagina.map(vale -> {
             Map<String, Object> fila = new LinkedHashMap<>();
             fila.put("id", vale.getId());
             fila.put("codigo", vale.getCodigo());
@@ -56,9 +67,7 @@ public class ValeController {
                     && ahora.isAfter(vale.getFechaVencimiento());
             fila.put("estado", vencido ? "VENCIDO" : vale.getEstado());
             fila.put("idCliente", vale.getIdCliente());
-            fila.put("clienteNombre", vale.getIdCliente() == null
-                    ? null
-                    : clienteRepository.findById(vale.getIdCliente()).map(Cliente::getNombre).orElse(null));
+            fila.put("clienteNombre", vale.getIdCliente() == null ? null : nombres.get(vale.getIdCliente()));
             fila.put("motivo", vale.getMotivo());
             return fila;
         });

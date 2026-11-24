@@ -19,6 +19,7 @@ public class MovimientoCajaService {
     private MovimientoCajaRepository movimientoRepository;
 
     // 🟢 1. Traer todos los movimientos de una caja (Para el Modal del Ojito)
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<MovimientoCaja> obtenerMovimientosPorCaja(Long cajaId) {
         return movimientoRepository.findByCajaIdOrderByFechaHoraAsc(cajaId);
     }

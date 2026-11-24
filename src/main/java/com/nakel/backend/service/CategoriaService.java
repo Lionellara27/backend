@@ -16,6 +16,7 @@ public class CategoriaService {
         this.articuloRepository = articuloRepository;
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<Categoria> obtenerTodas() { return repository.findAll(); }
 
     public Categoria guardarCategoria(Categoria cat) {

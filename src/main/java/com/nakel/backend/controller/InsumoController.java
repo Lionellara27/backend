@@ -100,13 +100,6 @@ public class InsumoController {
         }
     }
 
-    @GetMapping("/lista")
-    public ResponseEntity<List<Insumo>> obtenerLista() {
-
-        List<Insumo> lista = insumoService
-                .obtenerTodos(Pageable.unpaged())
-                .getContent();
-
-        return ResponseEntity.ok(lista);
-    }
+    // (Acá había un "/lista" que devolvía TODOS los insumos sin paginar. Ninguna pantalla lo usaba y se quitó:
+    //  los insumos se piden siempre de a páginas, con /filtrar o /calculadora.)
 }

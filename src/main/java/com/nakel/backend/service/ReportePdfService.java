@@ -27,6 +27,7 @@ public class ReportePdfService {
      *               0    = solo los que tienen stock;
      *               N    = solo los que tienen MÁS de N unidades.
      */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public byte[] generarReporteStock(Integer mayorA) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 

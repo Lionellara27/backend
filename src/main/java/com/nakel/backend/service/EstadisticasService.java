@@ -19,6 +19,7 @@ public class EstadisticasService {
     @Autowired
     private ArticuloRepository articuloRepository;
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public DashboardDTO obtenerDatosDashboard() {
         // 1. Calculamos los rangos de tiempo
         LocalDateTime inicioHoy = LocalDateTime.now().with(LocalTime.MIN); // Hoy a las 00:00:00
