@@ -177,6 +177,30 @@ public class ArticuloController {
         }
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.nakel.backend.service.EtiquetasPdfService etiquetasPdfService;
+
+    // 🏷️ Etiquetas con código de barras, en hoja A4 de 24 etiquetas (70 x 37 mm).
+    //    Ejemplos: /etiquetas?categoriaId=4&copias=STOCK      /etiquetas?idArticulo=12&copias=FIJA&cantidad=6
+    @GetMapping("/etiquetas")
+    public ResponseEntity<?> descargarEtiquetas(
+            @RequestParam(required = false) Long idArticulo,
+            @RequestParam(required = false) Long categoriaId,
+            @RequestParam(defaultValue = "true") boolean soloConStock,
+            @RequestParam(defaultValue = "UNA") String copias,
+            @RequestParam(required = false) Integer cantidad,
+            @RequestParam(defaultValue = "true") boolean conPrecio) {
+        try {
+            byte[] pdf = etiquetasPdfService.generar(idArticulo, categoriaId, soloConStock, copias, cantidad, conPrecio);
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "Etiquetas_Nakel.pdf");
+            return new ResponseEntity<>(pdf, headers, org.springframework.http.HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // 🖨️ NUEVO: Descargar Reporte de Stock en PDF
     @GetMapping("/reporte-stock")
     public ResponseEntity<byte[]> descargarReporteStock(@RequestParam(required = false) Integer mayorA) {

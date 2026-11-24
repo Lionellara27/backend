@@ -99,6 +99,10 @@ public class ArticuloService {
             art.setOrigen(articuloNuevo.getOrigen());
             art.setCategoria(articuloNuevo.getCategoria());
             art.setMaterial(articuloNuevo.getMaterial());
+            art.setCosto(articuloNuevo.getCosto()); // puede quedar vacío
+            if (articuloNuevo.getStockMinimo() != null) {
+                art.setStockMinimo(articuloNuevo.getStockMinimo());
+            }
             return articuloRepository.save(art);
         }).orElse(null);
     }
@@ -117,6 +121,12 @@ public class ArticuloService {
         }
         if (articulo.getStockActual() == null || articulo.getStockActual() < 0) {
             throw new IllegalArgumentException("El stock debe ser un número mayor o igual a 0.");
+        }
+        if (articulo.getCosto() != null && articulo.getCosto().signum() < 0) {
+            throw new IllegalArgumentException("El costo no puede ser negativo.");
+        }
+        if (articulo.getStockMinimo() != null && articulo.getStockMinimo() < 0) {
+            throw new IllegalArgumentException("El stock mínimo no puede ser negativo.");
         }
     }
 

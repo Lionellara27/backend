@@ -64,6 +64,7 @@ public class ProduccionService {
         nuevoArticulo.setCodigo(dto.getCodigo()); // El SKU autogenerado
         nuevoArticulo.setPrecio(dto.getPrecioVenta()); // Precio final corregido (sin pisar con costo)
         nuevoArticulo.setStockActual(dto.getStock());
+        nuevoArticulo.setCosto(dto.getCosto()); // costo de producción de UNA unidad, según la receta
         nuevoArticulo.setOrigen(dto.getOrigen()); // "Produccion Propia"
 
         nuevoArticulo.setAlicuotaIva(21.0); // Dato por defecto para la Fase 2

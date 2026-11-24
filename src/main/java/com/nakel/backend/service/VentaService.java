@@ -118,6 +118,8 @@ public class VentaService {
             articuloEnBd.setStockActual(articuloEnBd.getStockActual() - detalle.getCantidad());
             articuloRepository.save(articuloEnBd);
             detalle.setArticulo(articuloEnBd);
+            // Foto del costo de hoy, para calcular la ganancia de esta venta aunque después cambie
+            detalle.setCostoUnitario(articuloEnBd.getCosto());
         }
 
         // 5. Guardamos la Venta final en la Base de Datos

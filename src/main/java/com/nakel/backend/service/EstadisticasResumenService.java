@@ -34,6 +34,9 @@ public class EstadisticasResumenService {
     // Unidades realmente vendidas de un renglón (descontando lo devuelto) y su importe
     private static final String UNIDADES = "(d.cantidad - COALESCE(d.cantidadDevuelta, 0))";
     private static final String IMPORTE = "(d.precioUnitario * " + UNIDADES + ")";
+    // Ganancia de un renglón: solo se puede calcular si la venta guardó el costo
+    private static final String GANANCIA = "CASE WHEN d.costoUnitario IS NOT NULL THEN (d.precioUnitario - d.costoUnitario) * " + UNIDADES + " ELSE 0 END";
+    private static final String IMPORTE_CON_COSTO = "CASE WHEN d.costoUnitario IS NOT NULL THEN " + IMPORTE + " ELSE 0 END";
     private static final String CUIT_CONSUMIDOR_FINAL = "00000000";
     private static final int DIAS_SIN_MOVIMIENTO = 90;
 
@@ -118,6 +121,20 @@ public class EstadisticasResumenService {
                         + " GROUP BY p.metodoPago ORDER BY SUM(p.monto) DESC",
                 desde, hasta, 0, "nombre", "total"));
 
+        // ---------- GANANCIA ----------
+        // Se calcula solo sobre lo vendido que tiene costo cargado; lo demás se informa aparte.
+        Object[] gan = (Object[]) em.createQuery(
+                        "SELECT COALESCE(SUM(" + GANANCIA + "), 0), COALESCE(SUM(" + IMPORTE_CON_COSTO + "), 0), COALESCE(SUM(" + IMPORTE + "), 0) "
+                                + "FROM DetalleVenta d JOIN d.venta v WHERE " + EN_PERIODO)
+                .setParameter("desde", desde).setParameter("hasta", hasta).getSingleResult();
+        double ganancia = num(gan[0]), vendidoConCosto = num(gan[1]), vendidoEnProductos = num(gan[2]);
+        r.put("ganancia", ganancia);
+        r.put("vendidoConCosto", vendidoConCosto);
+        r.put("vendidoSinCosto", Math.max(0, vendidoEnProductos - vendidoConCosto));
+        r.put("margenGanancia", vendidoConCosto > 0 ? ganancia / vendidoConCosto * 100 : 0);
+        r.put("articulosSinCosto", ((Number) em.createQuery(
+                "SELECT COUNT(a) FROM Articulo a WHERE a.activo = true AND a.costo IS NULL").getSingleResult()).longValue());
+
         // ---------- PRODUCTOS ----------
         r.put("categorias", filas(
                 "SELECT COALESCE(c.nombre, 'Sin categoría'), SUM(" + UNIDADES + "), SUM(" + IMPORTE + ") "
@@ -125,16 +142,16 @@ public class EstadisticasResumenService {
                         + " GROUP BY c.nombre HAVING SUM(" + UNIDADES + ") > 0 ORDER BY SUM(" + IMPORTE + ") DESC",
                 desde, hasta, 0, "nombre", "unidades", "total"));
         r.put("topArticulos", filas(
-                "SELECT a.codigo, a.nombre, SUM(" + UNIDADES + "), SUM(" + IMPORTE + ") "
+                "SELECT a.codigo, a.nombre, SUM(" + UNIDADES + "), SUM(" + IMPORTE + "), SUM(" + GANANCIA + "), SUM(" + IMPORTE_CON_COSTO + ") "
                         + "FROM DetalleVenta d JOIN d.venta v JOIN d.articulo a WHERE " + EN_PERIODO
                         + " GROUP BY a.id, a.codigo, a.nombre HAVING SUM(" + UNIDADES + ") > 0 "
                         + "ORDER BY SUM(" + UNIDADES + ") DESC, SUM(" + IMPORTE + ") DESC",
-                desde, hasta, 10, "codigo", "nombre", "unidades", "total"));
+                desde, hasta, 10, "codigo", "nombre", "unidades", "total", "ganancia", "conCosto"));
         r.put("origenes", filas(
-                "SELECT a.origen, SUM(" + UNIDADES + "), SUM(" + IMPORTE + ") "
+                "SELECT a.origen, SUM(" + UNIDADES + "), SUM(" + IMPORTE + "), SUM(" + GANANCIA + "), SUM(" + IMPORTE_CON_COSTO + ") "
                         + "FROM DetalleVenta d JOIN d.venta v JOIN d.articulo a WHERE " + EN_PERIODO
                         + " GROUP BY a.origen HAVING SUM(" + UNIDADES + ") > 0 ORDER BY SUM(" + IMPORTE + ") DESC",
-                desde, hasta, 0, "nombre", "unidades", "total"));
+                desde, hasta, 0, "nombre", "unidades", "total", "ganancia", "conCosto"));
 
         // ---------- CLIENTES ----------
         String identificado = "c.cuit IS NOT NULL AND c.cuit <> '" + CUIT_CONSUMIDOR_FINAL + "'";

@@ -29,6 +29,11 @@ public class DetalleVenta {
     @Column(name = "cantidad_devuelta", nullable = false)
     private Integer cantidadDevuelta = 0;
 
+    // Costo del artículo en el momento de la venta. Se guarda acá (y no se lee del artículo) para que,
+    // si después cambia el costo, la ganancia de las ventas viejas no se mueva. null = sin costo cargado.
+    @Column(name = "costo_unitario")
+    private BigDecimal costoUnitario;
+
     // 🔥 BLINDAJE 1: Lazy + JsonIgnore (Para que no explote el Frontend)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venta_id", nullable = false)

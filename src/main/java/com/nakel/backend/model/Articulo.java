@@ -47,6 +47,11 @@ public class Articulo {
     @Column(nullable = false)
     private Integer stockMinimo = 8;
 
+    // Cuánto le cuesta el artículo al local: el precio de compra (reventa) o el costo de producción
+    // (producción propia). Puede venir vacío: null = "todavía no se cargó", y esa venta no entra en la
+    // cuenta de ganancia. No se usa 0 ni el precio de venta como relleno porque darían una ganancia falsa.
+    private BigDecimal costo;
+
     // Por esto (le agregamos la instrucción SQL por defecto):
     @Column(nullable = false, columnDefinition = "boolean default true")
     private boolean activo = true;
